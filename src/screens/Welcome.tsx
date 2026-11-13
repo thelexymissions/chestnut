@@ -124,7 +124,7 @@ export function Welcome() {
       <div className="welcome-shade" />
 
       {stage === 'hello' && (
-        <div className="welcome-body hello">
+        <div className="welcome-body intro">
           <Logo size={64} />
           <h1>Chestnut</h1>
           <p className="lead">A verse for what's on your mind.</p>
