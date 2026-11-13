@@ -34,7 +34,7 @@ export default defineConfig({
       },
     }),
   ],
-  build: { target: 'es2020', chunkSizeWarningLimit: 900 },
+  build: { target: 'es2020', cssTarget: ['chrome105', 'edge105', 'firefox110', 'safari16'], chunkSizeWarningLimit: 900 },
   server: { host: true },
   preview: { host: true },
 });

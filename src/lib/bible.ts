@@ -143,5 +143,71 @@ export function searchBible(query: string, scope: SearchScope = 'all', limit = 2
   return { hits, total, terms: quick, perBook };
 }
 
+/** The verse `delta` places after (or before) a reference, crossing chapters and books. */
+export function stepRef(r: Ref, delta: number): Ref | undefined {
+  if (!data) return undefined;
+  let { b, c, v } = r;
+  let n = delta;
+  while (n !== 0) {
+    if (n > 0) {
+      if (v < data[b - 1][c - 1].length) v++;
+      else if (c < data[b - 1].length) { c++; v = 1; }
+      else if (b < 66) { b++; c = 1; v = 1; }
+      else return undefined;
+      n--;
+    } else {
+      if (v > 1) v--;
+      else if (c > 1) { c--; v = data[b - 1][c - 1].length; }
+      else if (b > 1) { b--; c = data[b - 1].length; v = data[b - 1][c - 1].length; }
+      else return undefined;
+      n++;
+    }
+  }
+  return { b, c, v };
+}
+export const verseExists = (r: Ref): boolean => data?.[r.b - 1]?.[r.c - 1]?.[r.v - 1] !== undefined;
+export const chapterCount = (b: number): number => data?.[b - 1]?.length ?? 0;
+
+// ---- vocabulary, used to offer wrong choices in the memorising exercises ----
+// Every word offered is a real word of the King James text, chosen by fixed rules.
+const WORD = /[A-Za-z]+(?:['-][A-Za-z]+)*/g;
+export const wordsOf = (text: string): string[] => text.match(WORD) ?? [];
+
+export interface Vocab { byLetter: Record<string, string[]>; byLength: Record<number, string[]>; proper: Set<string> }
+let vocab: Vocab | null = null;
+
+/** Common Bible words (used at least 12 times), most frequent first. */
+export function getVocab(): Vocab {
+  if (vocab) return vocab;
+  const counts = new Map<string, number>();
+  const lowerForm = new Map<string, number>();
+  for (const e of buildIndex()) {
+    for (const w of wordsOf(e.text)) {
+      const k = w.toLowerCase();
+      counts.set(k, (counts.get(k) || 0) + 1);
+      if (w === k) lowerForm.set(k, (lowerForm.get(k) || 0) + 1);
+    }
+  }
+  // names and titles: written with a capital at least four times in five
+  const proper = new Set<string>();
+  for (const [k, n] of counts) if ((lowerForm.get(k) || 0) < n * 0.2) proper.add(k);
+  const common = [...counts.entries()].filter(([w, n]) => n >= 12 && w.length >= 2).sort((a, b) => b[1] - a[1]).map(([w]) => w);
+  const byLetter: Record<string, string[]> = {};
+  const byLength: Record<number, string[]> = {};
+  for (const w of common) {
+    (byLetter[w[0]] ||= []).push(w);
+    (byLength[w.length] ||= []).push(w);
+  }
+  vocab = { byLetter, byLength, proper };
+  return vocab;
+}
+
+/** Distinct lower-case words of a chapter, in order of first appearance. */
+export function chapterWords(b: number, c: number): string[] {
+  const seen = new Set<string>();
+  for (const raw of getChapter(b, c) ?? []) for (const w of wordsOf(plain(raw).toLowerCase())) seen.add(w);
+  return [...seen];
+}
+
 export const TOTAL_VERSES = 31102;
 export const bookName = (b: number) => BOOKS[b - 1].name;

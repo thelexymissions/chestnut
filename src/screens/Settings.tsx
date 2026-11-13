@@ -58,6 +58,8 @@ export function Settings() {
   const theme = useStore((s) => s.theme);
   const rate = useStore((s) => s.rate);
   const voice = useStore((s) => s.voice);
+  const haptics = useStore((s) => s.haptics);
+  const memCount = useStore((s) => Object.keys(s.memory).length);
   const savedCount = useStore((s) => Object.keys(s.saved).length);
   const noteCount = useStore((s) => Object.values(s.notes).reduce((a, n) => a + n.length, 0));
   const file = useRef<HTMLInputElement>(null);
@@ -91,6 +93,10 @@ export function Settings() {
           <span className="label">Appearance</span>
           <Segmented label="Appearance" value={theme} onChange={(v) => update(() => ({ theme: v }))}
             options={[{ value: 'auto', label: 'Match phone' }, { value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }]} />
+          <span className="label">Vibration on taps</span>
+          <Segmented label="Vibration" value={haptics ? 'on' : 'off'} onChange={(v) => update(() => ({ haptics: v === 'on' }))}
+            options={[{ value: 'on', label: 'On' }, { value: 'off', label: 'Off' }]} />
+          <p className="hint">Works on phones that let web apps vibrate. iPhones do not.</p>
           <button className="btn ghost" onClick={() => { update(() => ({ hintsSeen: false })); toast('Tips will show next time you open the feed'); }}>Show the gesture tips again</button>
         </section>
 
@@ -117,7 +123,7 @@ export function Settings() {
 
         <section className="group">
           <h2>Backup</h2>
-          <p className="hint">You have {savedCount} saved {savedCount === 1 ? 'verse' : 'verses'} and {noteCount} {noteCount === 1 ? 'note' : 'notes'}. They live only on this device, so save a backup before changing phones or clearing your browser.</p>
+          <p className="hint">You have {savedCount} saved {savedCount === 1 ? 'verse' : 'verses'}, {noteCount} {noteCount === 1 ? 'note' : 'notes'} and {memCount} {memCount === 1 ? 'verse' : 'verses'} in Memorise. They live only on this device, so save a backup before changing phones or clearing your browser.</p>
           <div className="row gap wrap">
             <button className="btn" onClick={() => { downloadBlob(new Blob([exportBackup()], { type: 'application/json' }), `chestnut-backup-${localDay()}.json`); toast('Backup saved to your downloads'); }}>Save a backup</button>
             <button className="btn ghost" onClick={() => file.current?.click()}>Restore from backup</button>
@@ -140,6 +146,7 @@ export function Settings() {
           <p>The Bible text is the King James Version (1769 standard text), which is in the public domain in most of the world.</p>
           <p>Every one of the {verification.checked.split(' ')[0]} verses was compared word for word against two other independent copies before being included: {verification.confirmedWordForWordByBothOtherCopies.toLocaleString()} matched both, {verification.confirmedWordForWordByOneOtherCopy.toLocaleString()} matched one, and {verification.spellingVariantOnly.length} differ only in an old spelling such as <q>sope</q> for <q>soap</q>.</p>
           <p>The {CARDS.length} verses in the feed are grouped by topic by hand. The grouping is a reading aid, not part of scripture.</p>
+          <p>Memorise exercises are marked by exact match with this text. The wrong choices offered are real Bible words and references picked by fixed rules; nothing is generated.</p>
           {credits.length > 0 && <p className="hint">Photographs from Unsplash by {credits.join(', ')}.</p>}
         </section>
 

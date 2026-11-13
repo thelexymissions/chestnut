@@ -1,102 +1,220 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { topicById, topicLabel, TOPICS } from '../data/topics';
-import { getVerse, useBible } from '../lib/bible';
-import { chapterPath, formatRef, keyOf, refOf, type Ref, type VerseKey } from '../lib/books';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
+import { flushSync } from 'react-dom';
+import { topicById, topicLabel } from '../data/topics';
+import { getVerse, loadBible, stepRef, useBible } from '../lib/bible';
+import { chapterPath, formatRef, formatRefShort, keyOf, refOf, type Ref, type VerseKey } from '../lib/books';
 import { buildFeed, cardByKey, displayTopic, sessionSeed, type Card } from '../lib/feed';
 import { navigate } from '../lib/router';
-import { hash, nextScene, pickScene, sceneById, sceneUrl, type Mood, type Scene } from '../lib/scenes';
+import { hash, nextScene, pickScene, sceneById, type Mood, type Scene } from '../lib/scenes';
 import { speak, speechSupported, useSpeaking } from '../lib/speech';
 import { save, toggleSaved, update, useStore } from '../lib/store';
 import {
-  IconBookmark, IconGrid, IconMore, IconNote, IconShare, IconSpeaker, IconStop,
+  IconBack, IconBook, IconBookmark, IconForward, IconGrid, IconMore, IconNote, IconReturn, IconShare, IconSpeaker, IconStop,
 } from '../components/Icons';
+import { SceneView } from '../components/Scene';
+import { Scripture } from '../components/Scripture';
 import { NotesSheet, QuickActions, ShareSheet, type VerseLike } from '../components/VerseSheets';
-import { buzz, TabBar, toast } from '../components/ui';
+import { buzz, HAPTIC, TabBar, toast } from '../components/ui';
 
 const ALL_MOODS: Mood[] = ['dawn', 'sky', 'deep', 'forest', 'ember', 'earth', 'dusk', 'light'];
 
-function moodsFor(card: Card, topicId?: string): Mood[] {
+function moodsFor(key: VerseKey, topicId?: string): Mood[] {
   const t = topicId ? topicById(topicId) : undefined;
   if (t) return t.moods;
-  return [ALL_MOODS[hash(card.key) % ALL_MOODS.length]];
+  return [ALL_MOODS[hash(key) % ALL_MOODS.length]];
 }
 
-export function sceneFor(card: Card, topicId: string | undefined, override?: string): Scene {
-  return (override && sceneById(override)) || pickScene(card.key, moodsFor(card, topicId));
+export function sceneFor(key: VerseKey, topicId: string | undefined, override?: string): Scene {
+  return (override && sceneById(override)) || pickScene(key, moodsFor(key, topicId));
+}
+
+/** A verse as shown on a card: the card's own verse, or one reached by swiping sideways. */
+interface Shown extends Ref { key: VerseKey; text: string; topics: string[] }
+
+function verseAt(r: Ref | undefined): Shown | undefined {
+  if (!r) return undefined;
+  const key = keyOf(r);
+  const card = cardByKey(key);
+  if (card) return card;
+  const text = getVerse(r);
+  return text ? { ...r, key, text, topics: [] } : undefined;
 }
 
 type Size = 'xl' | 'lg' | 'md' | 'sm' | 'xs' | 'xxs';
 const sizeClass = (n: number): Size => (n <= 70 ? 'xl' : n <= 120 ? 'lg' : n <= 185 ? 'md' : n <= 260 ? 'sm' : n <= 340 ? 'xs' : 'xxs');
 const BASE_SIZE: Record<Size, number> = { xl: 46, lg: 40, md: 34, sm: 29, xs: 25, xxs: 22 };
+const SCALES = [0.9, 1, 1.14];
 
-interface CardHandlers {
-  onNote: (c: Card) => void;
-  onShare: (c: Card, scene: Scene) => void;
-  onMore: (c: Card, scene: Scene) => void;
-  onTap: () => void;
-  onSwipe: (c: Card, dir: 'left' | 'right') => void;
+let measurer: CanvasRenderingContext2D | null | undefined;
+/** Width of the verse's widest word at a given size, so no word is ever broken across lines. */
+function widestWord(text: string, size: number): number {
+  if (measurer === undefined) measurer = document.createElement('canvas').getContext('2d');
+  if (!measurer) return 0;
+  measurer.font = `600 ${size}px "Cormorant Garamond", Georgia, serif`;
+  let max = 0;
+  for (const w of text.split(/\s+/)) max = Math.max(max, measurer.measureText(w + '\u201D').width);
+  return max;
 }
 
-const VerseCard = memo(function VerseCard({ card, topicId, active, handlers }: {
-  card: Card;
-  topicId?: string;
-  active: boolean;
-  handlers: CardHandlers;
+// ---------- one verse, typeset to fit ----------
+const Panel = memo(function Panel({ verse, topic, origin, reveal, onReturn, onStep, canPrev, canNext }: {
+  verse: Shown;
+  topic?: string;
+  /** set when this is not the card's own verse: offers the way back */
+  origin?: Ref;
+  reveal: boolean;
+  onReturn?: () => void;
+  onStep?: (dir: -1 | 1) => void;
+  canPrev?: boolean;
+  canNext?: boolean;
 }) {
-  const saved = useStore((s) => s.saved[card.key] !== undefined);
-  const noteCount = useStore((s) => s.notes[card.key]?.length ?? 0);
-  const override = useStore((s) => s.bg[card.key]);
-  const speaking = useSpeaking() === card.key;
-  const scene = sceneFor(card, topicId, override);
-  const [burst, setBurst] = useState<{ x: number; y: number; id: number } | null>(null);
-  const content = useRef<HTMLDivElement>(null);
+  const box = useRef<HTMLElement>(null);
   const textEl = useRef<HTMLParagraphElement>(null);
-  const root = useRef<HTMLDivElement>(null);
   const textSize = useStore((s) => s.textSize);
 
-  // largest type at which the whole verse fits this card
+  // largest type at which the whole verse fits
   useLayoutEffect(() => {
-    const box = content.current, el = textEl.current;
-    if (!box || !el) return;
+    const b = box.current, el = textEl.current;
+    if (!b || !el) return;
     const fit = () => {
-      const w = box.clientWidth;
+      const w = b.clientWidth;
       if (!w) return;
       const widthFactor = Math.min(1.15, Math.max(0.8, w / 400));
-      let size = Math.round(BASE_SIZE[sizeClass(card.text.length)] * widthFactor * [0.9, 1, 1.14][textSize]);
+      let size = Math.round(BASE_SIZE[sizeClass(verse.text.length)] * widthFactor * SCALES[textSize]);
+      const room = el.clientWidth || w - 108;
+      const widest = widestWord(verse.text, size);
+      if (widest > room) size = Math.max(15, Math.floor(size * (room / widest)));
       el.style.fontSize = size + 'px';
       let guard = 0;
-      while (box.scrollHeight > box.clientHeight + 1 && size > 15 && guard++ < 60) {
+      while (b.scrollHeight > b.clientHeight + 1 && size > 15 && guard++ < 60) {
         size -= 1;
         el.style.fontSize = size + 'px';
       }
     };
     fit();
     const ro = new ResizeObserver(fit);
-    ro.observe(box);
+    ro.observe(b);
     document.fonts?.ready.then(fit).catch(() => undefined);
     return () => ro.disconnect();
-  }, [card.key, card.text, textSize, topicId]);
-  const g = useRef({ x: 0, y: 0, t: 0, down: false, moved: false, horizontal: false, long: false, lastTap: 0, timer: 0, tapTimer: 0 });
+  }, [verse.key, verse.text, textSize, topic, origin]);
 
-  const setDrag = (dx: number) => {
-    const el = root.current;
+  const ref = formatRef(verse);
+  return (
+    <article className="panel" ref={box} aria-label={`${ref}. ${verse.text}`}>
+      {origin ? (
+        <button className="card-return" onClick={onReturn} aria-label={`Back to ${formatRef(origin)}`}>
+          <IconReturn size={14} />{formatRef(origin)}
+        </button>
+      ) : topic ? <div className="card-topic">{topicLabel(topic)}</div> : <span className="card-topic ghost" aria-hidden />}
+      <p className="card-text" ref={textEl}><Scripture text={verse.text} reveal={reveal} /></p>
+      <span className="card-rule" aria-hidden />
+      <div className="card-refrow">
+        <button className="refstep" aria-label="Previous verse" disabled={!canPrev} onClick={() => onStep?.(-1)}><IconBack size={17} /></button>
+        <button className="card-ref" onClick={() => navigate(chapterPath(verse.b, verse.c, verse.v))} aria-label={`${ref}. Read the chapter`}>
+          <b className="full">{ref.length > 17 ? formatRefShort(verse) : ref}</b><b className="short">{formatRefShort(verse)}</b><span>KJV</span><IconBook size={14} />
+        </button>
+        <button className="refstep" aria-label="Next verse" disabled={!canNext} onClick={() => onStep?.(1)}><IconForward size={17} /></button>
+      </div>
+    </article>
+  );
+});
+
+interface CardHandlers {
+  onNote: (v: Shown) => void;
+  onShare: (v: Shown, scene: Scene) => void;
+  onMore: (v: Shown, originKey: VerseKey, topicId?: string) => void;
+  onTap: () => void;
+}
+export interface CardApi { step: (dir: -1 | 1) => void }
+
+const VerseCard = memo(function VerseCard({ card, topicId, active, hero, bibleReady, handlers, api }: {
+  card: Card;
+  topicId?: string;
+  active: boolean;
+  hero: boolean;
+  bibleReady: boolean;
+  handlers: CardHandlers;
+  api: MutableRefObject<CardApi | null>;
+}) {
+  // how many verses the reader has moved sideways from the card's own verse
+  const [offset, setOffset] = useState(0);
+  const shown: Shown = (offset !== 0 && verseAt(stepRef(card, offset))) || card;
+  const prev = active && bibleReady ? verseAt(stepRef(shown, -1)) : undefined;
+  const next = active && bibleReady ? verseAt(stepRef(shown, 1)) : undefined;
+
+  const saved = useStore((s) => s.saved[shown.key] !== undefined);
+  const noteCount = useStore((s) => s.notes[shown.key]?.length ?? 0);
+  const override = useStore((s) => s.bg[card.key]);
+  const speaking = useSpeaking() === shown.key;
+  const scene = sceneFor(card.key, topicId, override);
+  const [burst, setBurst] = useState<{ x: number; y: number; id: number } | null>(null);
+  const [shine, setShine] = useState(0);
+  const root = useRef<HTMLDivElement>(null);
+  const track = useRef<HTMLDivElement>(null);
+  const busy = useRef(false);
+  const g = useRef({ x: 0, y: 0, t: 0, lx: 0, lt: 0, vx: 0, down: false, moved: false, horizontal: false, long: false, lastTap: 0, timer: 0, tapTimer: 0 });
+
+  useEffect(() => { if (!active) setOffset(0); }, [active]);
+
+  const setDrag = (px: number) => track.current?.style.setProperty('--drag', `${px}px`);
+
+  /** Slides the row of verses to rest: on the neighbour (dir) or back where it was (0). */
+  const settle = useCallback((dir: -1 | 0 | 1) => {
+    const el = track.current, w = root.current?.clientWidth ?? 0;
     if (!el) return;
-    el.style.setProperty('--drag', `${dx}px`);
-    el.dataset.drag = dx < -24 ? 'left' : dx > 24 ? 'right' : '';
-  };
+    el.classList.add('settling');
+    setDrag(-dir * w);
+    if (dir === 0) {
+      window.setTimeout(() => el.classList.remove('settling'), 440);
+      return;
+    }
+    busy.current = true;
+    let finished = false;
+    const done = () => {
+      if (finished) return;
+      finished = true;
+      el.removeEventListener('transitionend', done);
+      flushSync(() => setOffset((o) => o + dir));
+      el.classList.remove('settling');
+      setDrag(0);
+      busy.current = false;
+    };
+    el.addEventListener('transitionend', done);
+    window.setTimeout(done, 480);
+  }, []);
 
-  const doSave = (x: number, y: number) => {
-    save(card.key);
-    buzz(14);
-    setBurst({ x, y, id: Date.now() });
-    window.setTimeout(() => setBurst(null), 900);
+  const step = useCallback((dir: -1 | 1) => {
+    if (busy.current) return;
+    if (!(dir < 0 ? prev : next)) {
+      if (!bibleReady) loadBible().catch(() => undefined);
+      return;
+    }
+    buzz(HAPTIC.tap);
+    settle(dir);
+  }, [prev, next, bibleReady, settle]);
+
+  useEffect(() => {
+    if (!active) return;
+    api.current = { step };
+    return () => { if (api.current?.step === step) api.current = null; };
+  }, [active, step, api]);
+
+  const onReturn = useCallback(() => { buzz(HAPTIC.tap); setOffset(0); }, []);
+
+  const celebrateSave = (x?: number, y?: number) => {
+    buzz(HAPTIC.save);
+    setShine(Date.now());
+    if (x !== undefined && y !== undefined) {
+      setBurst({ x, y, id: Date.now() });
+      window.setTimeout(() => setBurst(null), 900);
+    }
   };
 
   const onPointerDown = (e: React.PointerEvent) => {
     if ((e.target as Element).closest('button,a,input,textarea,[data-nogesture]')) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     const s = g.current;
-    s.x = e.clientX; s.y = e.clientY; s.t = Date.now();
+    s.x = e.clientX; s.y = e.clientY; s.t = e.timeStamp; s.lx = e.clientX; s.lt = e.timeStamp; s.vx = 0;
     s.down = true; s.moved = false; s.horizontal = false; s.long = false;
     window.clearTimeout(s.timer);
     s.timer = window.setTimeout(() => {
@@ -104,22 +222,31 @@ const VerseCard = memo(function VerseCard({ card, topicId, active, handlers }: {
         // the menu covers the card, so the gesture ends here
         s.long = true;
         s.down = false;
-        buzz(18);
-        handlers.onMore(card, scene);
+        buzz(HAPTIC.hold);
+        handlers.onMore(shown, card.key, topicId);
       }
     }, 480);
   };
   const onPointerMove = (e: React.PointerEvent) => {
     const s = g.current;
     if (!s.down) return;
-    if (e.pointerType === 'mouse' && e.buttons === 0) { s.down = false; setDrag(0); return; }
+    if (e.pointerType === 'mouse' && e.buttons === 0) { s.down = false; if (s.horizontal) settle(0); return; }
     const dx = e.clientX - s.x, dy = e.clientY - s.y;
     if (!s.moved && Math.hypot(dx, dy) > 10) { s.moved = true; window.clearTimeout(s.timer); }
-    if (!s.horizontal && Math.abs(dx) > 14 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+    if (!s.horizontal && !busy.current && Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.25) {
       s.horizontal = true;
+      track.current?.classList.remove('settling');
+      if (!bibleReady) loadBible().catch(() => undefined);
       try { (e.currentTarget as Element).setPointerCapture(e.pointerId); } catch { /* ignore */ }
     }
-    if (s.horizontal) setDrag(dx);
+    if (s.horizontal) {
+      const dt = e.timeStamp - s.lt;
+      if (dt > 0) s.vx = 0.7 * ((e.clientX - s.lx) / dt) + 0.3 * s.vx;
+      s.lx = e.clientX; s.lt = e.timeStamp;
+      // nothing that way (or not loaded yet): the row resists
+      const blocked = dx > 0 ? !prev : !next;
+      setDrag(blocked ? dx * 0.22 : dx);
+    }
   };
   const finish = (e: React.PointerEvent, cancelled: boolean) => {
     const s = g.current;
@@ -128,8 +255,14 @@ const VerseCard = memo(function VerseCard({ card, topicId, active, handlers }: {
     window.clearTimeout(s.timer);
     const dx = e.clientX - s.x;
     if (s.horizontal) {
-      setDrag(0);
-      if (!cancelled && Math.abs(dx) > 72) handlers.onSwipe(card, dx < 0 ? 'left' : 'right');
+      const w = root.current?.clientWidth ?? 360;
+      // a finger that stopped before lifting is placing the card, not flicking it
+      if (e.timeStamp - s.lt > 90) s.vx = 0;
+      const dir: -1 | 1 = dx < 0 ? 1 : -1;
+      const far = Math.abs(dx) > w * 0.22 || (Math.abs(dx) > 24 && Math.abs(s.vx) > 0.45 && Math.sign(s.vx) === Math.sign(dx));
+      const can = dir > 0 ? !!next : !!prev;
+      if (!cancelled && far && can) { buzz(HAPTIC.tap); settle(dir); }
+      else settle(0);
       return;
     }
     if (cancelled || s.long || s.moved) return;
@@ -138,7 +271,8 @@ const VerseCard = memo(function VerseCard({ card, topicId, active, handlers }: {
       window.clearTimeout(s.tapTimer);
       s.lastTap = 0;
       const r = root.current!.getBoundingClientRect();
-      doSave(e.clientX - r.left, e.clientY - r.top);
+      save(shown.key);
+      celebrateSave(e.clientX - r.left, e.clientY - r.top);
     } else {
       s.lastTap = now;
       s.tapTimer = window.setTimeout(() => handlers.onTap(), 300);
@@ -147,7 +281,8 @@ const VerseCard = memo(function VerseCard({ card, topicId, active, handlers }: {
 
   useEffect(() => () => { window.clearTimeout(g.current.timer); window.clearTimeout(g.current.tapTimer); }, []);
 
-  const ref = formatRef(card);
+  const ref = formatRef(shown);
+  const away = offset !== 0;
   return (
     <div
       ref={root}
@@ -156,38 +291,38 @@ const VerseCard = memo(function VerseCard({ card, topicId, active, handlers }: {
       onPointerMove={onPointerMove}
       onPointerUp={(e) => finish(e, false)}
       onPointerCancel={(e) => finish(e, true)}
-      onContextMenu={(e) => { e.preventDefault(); if (!g.current.long) handlers.onMore(card, scene); }}
+      onContextMenu={(e) => { e.preventDefault(); if (!g.current.long) handlers.onMore(shown, card.key, topicId); }}
     >
-      <div className={'card-bg' + (scene.kind === 'photo' ? ' photo' : '')} style={{ backgroundImage: `url("${sceneUrl(scene)}")` }} />
-      <div className="swipe-hint left" aria-hidden>Read chapter</div>
-      <div className="swipe-hint right" aria-hidden>Topics</div>
+      <SceneView scene={scene} live={active} hero={hero} />
+      {shine > 0 && <i className="shine" key={shine} aria-hidden />}
 
-      <article className="card-content" ref={content} aria-label={`${ref}. ${card.text}`}>
-        {topicId && <div className="card-topic">{topicLabel(topicId)}</div>}
-        <span className="card-mark" aria-hidden>{'“'}</span>
-        <p className={'card-text ' + sizeClass(card.text.length)} ref={textEl}>{card.text}</p>
-        <span className="card-rule" aria-hidden />
-        <div className="card-ref">{ref} <span>KJV</span></div>
-      </article>
+      <div className="card-track" ref={track}>
+        <div className="slot" inert>{prev && <Panel verse={prev} reveal={false} topic={offset === 1 ? topicId : undefined} origin={offset === 1 ? undefined : card} canPrev canNext />}</div>
+        <div className="slot">
+          <Panel verse={shown} topic={away ? undefined : topicId} origin={away ? card : undefined} reveal={!away}
+            onReturn={onReturn} onStep={step} canPrev={!!prev} canNext={!!next} />
+        </div>
+        <div className="slot" inert>{next && <Panel verse={next} reveal={false} topic={offset === -1 ? topicId : undefined} origin={offset === -1 ? undefined : card} canPrev canNext />}</div>
+      </div>
 
       <div className="rail">
         <button className={'rail-btn' + (saved ? ' on' : '')} aria-pressed={saved} aria-label={saved ? 'Remove from saved' : 'Save verse'}
-          onClick={() => { const now = toggleSaved(card.key); buzz(10); if (now) toast('Saved'); }}>
+          onClick={() => { const now = toggleSaved(shown.key); if (now) { celebrateSave(); toast('Saved'); } else buzz(HAPTIC.tap); }}>
           <IconBookmark size={27} filled={saved} /><span>{saved ? 'Saved' : 'Save'}</span>
         </button>
-        <button className="rail-btn" aria-label={noteCount ? `Your notes (${noteCount})` : 'Add a note'} onClick={() => handlers.onNote(card)}>
+        <button className="rail-btn" aria-label={noteCount ? `Your notes (${noteCount})` : 'Add a note'} onClick={() => handlers.onNote(shown)}>
           <IconNote size={27} /><span>{noteCount || 'Note'}</span>
         </button>
-        <button className="rail-btn" aria-label="Share" onClick={() => handlers.onShare(card, scene)}>
+        <button className="rail-btn" aria-label="Share" onClick={() => handlers.onShare(shown, scene)}>
           <IconShare size={26} /><span>Share</span>
         </button>
         {speechSupported() && (
           <button className={'rail-btn' + (speaking ? ' on' : '')} aria-label={speaking ? 'Stop reading' : 'Listen'}
-            onClick={() => speak(card.key, [`${card.text} ${ref}.`])}>
+            onClick={() => speak(shown.key, [`${shown.text} ${ref}.`])}>
             {speaking ? <IconStop size={26} /> : <IconSpeaker size={27} />}<span>{speaking ? 'Stop' : 'Listen'}</span>
           </button>
         )}
-        <button className="rail-btn" aria-label="More actions" onClick={() => handlers.onMore(card, scene)}>
+        <button className="rail-btn" aria-label="More actions" onClick={() => handlers.onMore(shown, card.key, topicId)}>
           <IconMore size={27} /><span>More</span>
         </button>
       </div>
@@ -205,11 +340,11 @@ const positions = new Map<string, number>();
 
 function GestureTips({ onClose }: { onClose: () => void }) {
   const tips: [string, string][] = [
-    ['Swipe up', 'Next verse'],
+    ['Swipe up', 'Next verse on your topics'],
+    ['Swipe left or right', 'The verse after or before it'],
     ['Double-tap', 'Save it'],
-    ['Press and hold', 'Copy, share, notes and more'],
-    ['Swipe left', 'Read the whole chapter'],
-    ['Swipe right', 'Back to topics'],
+    ['Press and hold', 'Copy, share, memorise and more'],
+    ['Tap the reference', 'Read the whole chapter'],
     ['Tap', 'Hide the buttons'],
   ];
   return (
@@ -259,11 +394,12 @@ export function Feed({ mode, first }: { mode: 'topics' | 'saved'; first?: Ref })
 
   const sig = `${mode}|${topics.join(',')}|${firstKey ?? ''}`;
   const scroller = useRef<HTMLDivElement>(null);
+  const cardApi = useRef<CardApi | null>(null);
   const [index, setIndex] = useState(() => positions.get(sig) ?? 0);
   const [clean, setClean] = useState(false);
   const [noteFor, setNoteFor] = useState<VerseLike | null>(null);
   const [shareFor, setShareFor] = useState<{ verse: VerseLike; scene: Scene } | null>(null);
-  const [moreFor, setMoreFor] = useState<{ card: Card; topicId?: string } | null>(null);
+  const [moreFor, setMoreFor] = useState<{ verse: Shown; originKey: VerseKey; topicId?: string } | null>(null);
   const bgOverrides = useStore((s) => s.bg);
 
   useLayoutEffect(() => {
@@ -292,15 +428,11 @@ export function Feed({ mode, first }: { mode: 'topics' | 'saved'; first?: Ref })
   const topicOf = useCallback((c: Card) => (mode === 'saved' ? c.topics[0] : displayTopic(c, topics)), [mode, topics]);
 
   const handlers: CardHandlers = useMemo(() => ({
-    onNote: (c) => setNoteFor(c),
-    onShare: (c, scene) => setShareFor({ verse: c, scene }),
-    onMore: (c) => setMoreFor({ card: c, topicId: topicOf(c) }),
+    onNote: (v) => setNoteFor(v),
+    onShare: (v, scene) => setShareFor({ verse: v, scene }),
+    onMore: (v, originKey, topicId) => setMoreFor({ verse: v, originKey, topicId }),
     onTap: () => setClean((v) => !v),
-    onSwipe: (c, dir) => {
-      if (dir === 'left') navigate(chapterPath(c.b, c.c, c.v));
-      else navigate(mode === 'saved' ? '/saved' : '/');
-    },
-  }), [mode, topicOf]);
+  }), []);
 
   // someone opening a shared link sees the verse first; the tips wait for a normal visit
   const showTips = !hintsSeen && !first;
@@ -312,14 +444,12 @@ export function Feed({ mode, first }: { mode: 'topics' | 'saved'; first?: Ref })
       if (['ArrowDown', 'PageDown', 'j', ' '].includes(e.key)) { e.preventDefault(); go(1); }
       else if (['ArrowUp', 'PageUp', 'k'].includes(e.key)) { e.preventDefault(); go(-1); }
       else if (!c) return;
-      else if (e.key === 's') { const now = toggleSaved(c.key); toast(now ? 'Saved' : 'Removed from saved'); }
-      else if (e.key === 'n') setNoteFor(c);
-      else if (e.key === 'ArrowRight') navigate(chapterPath(c.b, c.c, c.v));
-      else if (e.key === 'ArrowLeft') navigate(mode === 'saved' ? '/saved' : '/');
+      else if (e.key === 'ArrowRight') cardApi.current?.step(1);
+      else if (e.key === 'ArrowLeft') cardApi.current?.step(-1);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [cards, index, go, overlayOpen, mode]);
+  }, [cards, index, go, overlayOpen]);
 
   const label = mode === 'saved'
     ? 'Saved verses'
@@ -340,11 +470,10 @@ export function Feed({ mode, first }: { mode: 'topics' | 'saved'; first?: Ref })
   }
 
   if (!cards.length) {
-    const waiting = waitingForBible;
     return (
       <div className="feed empty-feed">
         <div className="empty">
-          {waiting ? <p>Opening the Bible…</p> : mode === 'saved' ? (
+          {waitingForBible ? <p>Opening the Bible…</p> : mode === 'saved' ? (
             <>
               <h2>No saved verses yet</h2>
               <p>Double-tap any verse to save it, and it will appear here.</p>
@@ -368,12 +497,14 @@ export function Feed({ mode, first }: { mode: 'topics' | 'saved'; first?: Ref })
       <div className="feed-scroll" ref={scroller} onScroll={onScroll} tabIndex={0} aria-label="Verses">
         {cards.map((c, i) => (
           <section className="slide" key={c.key} inert={i !== index}>
-            {Math.abs(i - index) <= 2 && <VerseCard card={c} topicId={topicOf(c)} active={i === index} handlers={handlers} />}
+            {Math.abs(i - index) <= 2 && (
+              <VerseCard card={c} topicId={topicOf(c)} active={i === index} hero={!!first && i === index} bibleReady={bibleReady} handlers={handlers} api={cardApi} />
+            )}
           </section>
         ))}
         <section className="slide end-slide">
           <div className="end">
-            <span className="card-mark" aria-hidden>{'❦'}</span>
+            <span className="end-mark" aria-hidden>{'❦'}</span>
             <h2>{mode === 'saved' ? 'That is everything you have saved' : `You have read all ${cards.length} verses here`}</h2>
             <p>{mode === 'saved' ? 'Find more in the feed.' : 'Choose another topic, or open the Bible and keep reading.'}</p>
             <div className="row gap center">
@@ -398,19 +529,17 @@ export function Feed({ mode, first }: { mode: 'topics' | 'saved'; first?: Ref })
       <NotesSheet verse={noteFor} onClose={() => setNoteFor(null)} />
       <ShareSheet verse={shareFor?.verse ?? null} scene={shareFor?.scene ?? null} onClose={() => setShareFor(null)} />
       <QuickActions
-        verse={more?.card ?? null}
+        verse={more?.verse ?? null}
         onClose={() => setMoreFor(null)}
-        onNote={() => more && setNoteFor(more.card)}
-        onShare={() => more && setShareFor({ verse: more.card, scene: sceneFor(more.card, more.topicId, bgOverrides[more.card.key]) })}
+        onNote={() => more && setNoteFor(more.verse)}
+        onShare={() => more && setShareFor({ verse: more.verse, scene: sceneFor(more.originKey, more.topicId, bgOverrides[more.originKey]) })}
         onChangeBackground={() => {
           if (!more) return;
-          const current = sceneFor(more.card, more.topicId, bgOverrides[more.card.key]);
-          const next = nextScene(current.id, moodsFor(more.card, more.topicId));
-          update((s) => ({ bg: { ...s.bg, [more.card.key]: next.id } }));
+          const current = sceneFor(more.originKey, more.topicId, bgOverrides[more.originKey]);
+          const next = nextScene(current.id, moodsFor(more.originKey, more.topicId));
+          update((s) => ({ bg: { ...s.bg, [more.originKey]: next.id } }));
         }}
       />
     </div>
   );
 }
-
-export { TOPICS };

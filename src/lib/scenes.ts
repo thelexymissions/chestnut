@@ -103,10 +103,26 @@ function ridgePath(r: () => number, base: number, amp: number): string {
   return d + `L${W} ${H} Z`;
 }
 
+/** Where the light sits in a painted scene, as fractions of its width and height, for the moving layers. */
+export interface SceneMeta {
+  layout: Layout | 'photo';
+  mood: Mood;
+  lightX: number;
+  lightY: number;
+  horizonY: number;
+  glow: string;
+  sun: string;
+  colors: string[];
+  stars: boolean;
+}
+const metaCache = new Map<string, SceneMeta>();
+
 function paint(id: string): string {
   const [mood, layout] = id.split('-') as [Mood, Layout];
   const p = PALETTES[mood];
   const r = rng(hash(id));
+  const meta: SceneMeta = { layout, mood, lightX: 0.5, lightY: 0.4, horizonY: 0.7, glow: p.glow, sun: p.sun, colors: [p.sky[2], p.glow, p.ridges[0]], stars: layout === 'night' || mood === 'deep' };
+  metaCache.set(id, meta);
   const stops = p.sky.map((c, i) => `<stop offset="${(i / (p.sky.length - 1)).toFixed(3)}" stop-color="${c}"/>`).join('');
   let defs = `<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">${stops}</linearGradient>`;
   let body = '';
@@ -142,6 +158,7 @@ function paint(id: string): string {
     const cx = layout === 'night' ? moonX : sunX;
     const sunY = layout === 'night' ? H * (0.17 + r() * 0.06) : layout === 'horizon' ? horizonY - 96 - r() * 70 : horizonY + 40;
     body += `<circle cx="${cx.toFixed(0)}" cy="${sunY.toFixed(0)}" r="${layout === 'night' ? 300 : 560}" fill="url(#halo)"/>`;
+    meta.lightX = cx / W; meta.lightY = sunY / H; meta.horizonY = horizonY / H;
     if (layout === 'night') body += `<circle cx="${cx.toFixed(0)}" cy="${sunY.toFixed(0)}" r="40" fill="${p.sun}" opacity="0.92"/>`;
     if (layout === 'horizon') body += `<circle cx="${cx.toFixed(0)}" cy="${sunY.toFixed(0)}" r="62" fill="${p.sun}" opacity="0.95"/>`;
 
@@ -201,6 +218,45 @@ export function sceneUrl(scene: Scene): string {
     urlCache.set(scene.id, u);
   }
   return u;
+}
+
+export function sceneMeta(scene: Scene): SceneMeta {
+  if (scene.kind === 'photo') {
+    const p = PALETTES[scene.mood];
+    return { layout: 'photo', mood: scene.mood, lightX: 0.5, lightY: 0.3, horizonY: 0.7, glow: p.glow, sun: p.sun, colors: [p.sky[2], p.glow, p.ridges[0]], stars: false };
+  }
+  if (!metaCache.has(scene.id)) sceneSvg(scene.id);
+  return metaCache.get(scene.id)!;
+}
+
+/** A scene with a horizon or hills rather than a plain colour field: reads better at small sizes. */
+export function pickPictorial(key: string, moods: Mood[]): Scene {
+  const pool = poolFor(moods).filter((s) => !s.id.endsWith('-glow'));
+  return pool.length ? pool[hash(key) % pool.length] : pickScene(key, moods);
+}
+
+let grain: string | null = null;
+/** A small tile of fine film grain, made once, laid over the scenes for a printed feel. */
+export function grainUrl(): string {
+  if (grain !== null) return grain;
+  try {
+    const size = 128;
+    const c = document.createElement('canvas');
+    c.width = size; c.height = size;
+    const ctx = c.getContext('2d')!;
+    const img = ctx.createImageData(size, size);
+    const rand = rng(20240611);
+    for (let i = 0; i < img.data.length; i += 4) {
+      const v = rand() < 0.5 ? 0 : 255;
+      img.data[i] = v; img.data[i + 1] = v; img.data[i + 2] = v;
+      img.data[i + 3] = Math.floor(rand() * 26);
+    }
+    ctx.putImageData(img, 0, 0);
+    grain = c.toDataURL('image/png');
+  } catch {
+    grain = '';
+  }
+  return grain;
 }
 
 /** A representative colour per mood, for chips and dots. */

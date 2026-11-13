@@ -56,6 +56,8 @@ export const refOf = (k: VerseKey): Ref => {
 /** Psalms reads better in the singular for a single chapter or verse. */
 const displayName = (b: Book) => (b.n === 19 ? 'Psalm' : b.name);
 export const formatRef = (r: Ref): string => `${displayName(BOOKS[r.b - 1])} ${r.c}:${r.v}`;
+/** "1 Thess 5:16": for places too narrow for the full book name. */
+export const formatRefShort = (r: Ref): string => `${BOOKS[r.b - 1].abbr} ${r.c}:${r.v}`;
 export const formatChapter = (b: number, c: number): string => `${displayName(BOOKS[b - 1])} ${c}`;
 export const versePath = (r: Ref): string => `/v/${BOOKS[r.b - 1].slug}/${r.c}/${r.v}`;
 export const chapterPath = (b: number, c: number, v?: number): string =>

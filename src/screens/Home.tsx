@@ -3,9 +3,11 @@ import { TOPICS, topicLabel } from '../data/topics';
 import { formatRef, versePath } from '../lib/books';
 import { CARDS, countForTopic, countForTopics, verseOfTheDay } from '../lib/feed';
 import { navigate } from '../lib/router';
-import { moodColor, pickScene, sceneUrl } from '../lib/scenes';
+import { isDue } from '../lib/memory';
+import { moodColor, pickPictorial, pickScene, sceneUrl } from '../lib/scenes';
 import { update, useStore } from '../lib/store';
-import { IconCheck, IconFlame, IconForward, IconSettings, Logo } from '../components/Icons';
+import { IconCheck, IconFlame, IconForward, IconMemory, IconSettings, Logo } from '../components/Icons';
+import { Scripture } from '../components/Scripture';
 import { TabBar } from '../components/ui';
 import { APP_NAME } from '../lib/share';
 
@@ -42,7 +44,8 @@ export function Home() {
   const [picked, setPicked] = useState<string[]>(stored);
   const votd = verseOfTheDay();
   const votdTopic = votd?.topics[0];
-  const votdScene = votd ? pickScene(votd.key, TOPICS.find((t) => t.id === votdTopic)?.moods ?? ['dawn']) : null;
+  const votdScene = votd ? pickPictorial(votd.key, TOPICS.find((t) => t.id === votdTopic)?.moods ?? ['dawn']) : null;
+  const due = useStore((s) => Object.values(s.memory).filter((e) => isDue(e)).length);
 
   const toggle = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   const start = (topics: string[]) => {
@@ -70,8 +73,17 @@ export function Home() {
           <button className={`votd ink-${votdScene.ink}`} onClick={() => navigate(versePath(votd))} aria-label={`Verse of the day: ${formatRef(votd)}. Open`}>
             <span className={'votd-bg' + (votdScene.kind === 'photo' ? ' photo' : '')} style={{ backgroundImage: `url("${sceneUrl(votdScene)}")` }} />
             <span className="votd-label">Verse of the day</span>
-            <span className="votd-text">{votd.text}</span>
+            <span className="votd-text"><Scripture text={votd.text} /></span>
+            <i className="sheen" aria-hidden />
             <span className="votd-ref">{formatRef(votd)}{votdTopic ? ` · ${topicLabel(votdTopic)}` : ''}</span>
+          </button>
+        )}
+
+        {due > 0 && (
+          <button className="due-strip" onClick={() => navigate('/memorise/review')}>
+            <IconMemory size={20} />
+            <span><strong>{due} {due === 1 ? 'verse' : 'verses'} to review</strong><small>A few minutes keeps them with you</small></span>
+            <IconForward size={18} />
           </button>
         )}
 

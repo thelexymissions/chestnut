@@ -6,6 +6,17 @@ import type { VerseKey } from './books';
 
 export interface Note { id: string; text: string; at: number; edited?: number }
 
+/** One verse on the memorising list. Days are local calendar day numbers. */
+export interface MemoryEntry {
+  added: number;
+  /** 0 = new; rises by one with each successful review */
+  box: number;
+  dueDay: number;
+  last: number;
+  reviews: number;
+  lapses: number;
+}
+
 export interface AppState {
   version: 1;
   name: string;
@@ -21,6 +32,9 @@ export interface AppState {
   voice: string;
   rate: number;
   lastRead: { b: number; c: number } | null;
+  memory: Record<VerseKey, MemoryEntry>;
+  haptics: boolean;
+  milestones: number[];
 }
 
 const KEY = 'chestnut.state.v1';
@@ -40,6 +54,9 @@ const defaults = (): AppState => ({
   voice: '',
   rate: 0.9,
   lastRead: null,
+  memory: {},
+  haptics: true,
+  milestones: [],
 });
 
 function read(): AppState {
@@ -143,10 +160,31 @@ export function touchStreak() {
   update(() => ({ streak: { last: today, count, best: Math.max(s.best, count) } }));
 }
 
+/** Whole local days since 1 Jan 1970, so "due today" follows the person's own calendar. */
+export const dayNumber = (d = new Date()) => Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000);
+
+// ---- memorising list ----
+export const isMemorising = (k: VerseKey) => state.memory[k] !== undefined;
+
+export function toggleMemorise(k: VerseKey): boolean {
+  const now = !isMemorising(k);
+  update((s) => {
+    const memory = { ...s.memory };
+    if (now) memory[k] = { added: Date.now(), box: 0, dueDay: dayNumber(), last: 0, reviews: 0, lapses: 0 };
+    else delete memory[k];
+    return { memory };
+  });
+  return now;
+}
+
+export function setMemory(k: VerseKey, entry: MemoryEntry) {
+  update((s) => ({ memory: { ...s.memory, [k]: entry } }));
+}
+
 // ---- backup ----
 export function exportBackup(): string {
-  const { name, saved, notes, bg, topics, streak, textSize, theme, rate, voice } = state;
-  return JSON.stringify({ app: 'chestnut', version: 1, exported: new Date().toISOString(), name, saved, notes, bg, topics, streak, textSize, theme, rate, voice }, null, 2);
+  const { name, saved, notes, bg, topics, streak, textSize, theme, rate, voice, memory } = state;
+  return JSON.stringify({ app: 'chestnut', version: 1, exported: new Date().toISOString(), name, saved, notes, bg, topics, streak, textSize, theme, rate, voice, memory }, null, 2);
 }
 
 export function importBackup(json: string): { saved: number; notes: number } {
@@ -169,7 +207,18 @@ export function importBackup(json: string): { saved: number; notes: number } {
       noteCount += add.length;
     }
   }
-  update((s) => ({ saved, notes, name: s.name || (typeof d.name === 'string' ? d.name : '') }));
+  // memorising progress: keep whichever copy is further along
+  const memory: Record<string, MemoryEntry> = { ...state.memory };
+  if (d.memory && typeof d.memory === 'object') {
+    for (const [k, e] of Object.entries(d.memory as Record<string, MemoryEntry>)) {
+      if (!keyOk(k) || !e || typeof e.box !== 'number' || typeof e.dueDay !== 'number') continue;
+      const mine = memory[k];
+      if (!mine || e.box > mine.box) {
+        memory[k] = { added: Number(e.added) || Date.now(), box: Math.max(0, Math.floor(e.box)), dueDay: Math.floor(e.dueDay), last: Number(e.last) || 0, reviews: Number(e.reviews) || 0, lapses: Number(e.lapses) || 0 };
+      }
+    }
+  }
+  update((s) => ({ saved, notes, memory, name: s.name || (typeof d.name === 'string' ? d.name : '') }));
   return { saved: Object.keys(saved).length, notes: noteCount };
 }
 

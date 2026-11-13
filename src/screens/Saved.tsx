@@ -1,14 +1,15 @@
 import { useMemo, useState } from 'react';
 import { topicById, topicLabel } from '../data/topics';
 import { getVerse, useBible } from '../lib/bible';
-import { chapterPath, formatRef, refOf, versePath, type VerseKey } from '../lib/books';
+import { formatRef, refOf, versePath, type VerseKey } from '../lib/books';
 import { cardByKey, type Card } from '../lib/feed';
 import { navigate } from '../lib/router';
 import { pickScene, sceneById, sceneUrl, type Scene } from '../lib/scenes';
-import { toggleSaved, useStore } from '../lib/store';
-import { IconBook, IconBookmark, IconNote, IconPlay, IconShare } from '../components/Icons';
+import { toggleMemorise, toggleSaved, useStore } from '../lib/store';
+import { IconBookmark, IconCheck, IconMemory, IconNote, IconPlay, IconShare } from '../components/Icons';
+import { Scripture } from '../components/Scripture';
 import { NoteComposer, NotesList, ShareSheet, type VerseLike } from '../components/VerseSheets';
-import { Segmented, TabBar, toast } from '../components/ui';
+import { buzz, HAPTIC, Segmented, TabBar, toast } from '../components/ui';
 
 function sceneOf(card: Card, override?: string): Scene {
   return (override && sceneById(override)) || pickScene(card.key, topicById(card.topics[0])?.moods ?? ['earth', 'dawn', 'sky', 'dusk']);
@@ -18,19 +19,22 @@ function Item({ card, onShare }: { card: Card; onShare: (c: Card, s: Scene) => v
   const saved = useStore((s) => s.saved[card.key] !== undefined);
   const count = useStore((s) => s.notes[card.key]?.length ?? 0);
   const override = useStore((s) => s.bg[card.key]);
+  const memorising = useStore((s) => s.memory[card.key] !== undefined);
   const [writing, setWriting] = useState(false);
   const scene = sceneOf(card, override);
   return (
     <li className="saved-item">
       <button className={`saved-card ink-${scene.ink}`} onClick={() => navigate(versePath(card))} aria-label={`Open ${formatRef(card)} as a card`}>
         <span className={'votd-bg' + (scene.kind === 'photo' ? ' photo' : '')} style={{ backgroundImage: `url("${sceneUrl(scene)}")` }} />
-        <span className="saved-text">{card.text}</span>
+        <span className="saved-text"><Scripture text={card.text} /></span>
         <span className="saved-ref">{formatRef(card)}{card.topics.length ? ` · ${card.topics.slice(0, 2).map(topicLabel).join(', ')}` : ''}</span>
       </button>
       <div className="saved-actions">
         <button onClick={() => setWriting((w) => !w)} aria-expanded={writing}><IconNote size={18} />{count ? `Notes (${count})` : 'Note'}</button>
         <button onClick={() => onShare(card, scene)}><IconShare size={18} />Share</button>
-        <button onClick={() => navigate(chapterPath(card.b, card.c, card.v))}><IconBook size={18} />Chapter</button>
+        <button aria-pressed={memorising} onClick={() => { const now = toggleMemorise(card.key); buzz(HAPTIC.save); toast(now ? 'Added to Memorise' : 'Removed from Memorise'); }}>
+          {memorising ? <IconCheck size={18} /> : <IconMemory size={18} />}{memorising ? 'Memorising' : 'Memorise'}
+        </button>
         <button onClick={() => { const now = toggleSaved(card.key); toast(now ? 'Saved' : 'Removed from saved'); }} aria-pressed={saved}>
           <IconBookmark size={18} filled={saved} />{saved ? 'Saved' : 'Save'}
         </button>

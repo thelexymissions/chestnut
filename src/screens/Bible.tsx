@@ -3,18 +3,18 @@ import {
   getChapter, searchBible, segments, startsParagraph, plain, useBible, type SearchScope,
 } from '../lib/bible';
 import {
-  BOOKS, bookBySlug, chapterPath, formatChapter, formatRef, keyOf, parseReference, versePath, type Ref,
+  BOOKS, bookBySlug, chapterPath, formatChapter, formatRef, keyOf, parseReference, type Ref,
 } from '../lib/books';
 import { back, navigate, type Route } from '../lib/router';
 import { pickScene } from '../lib/scenes';
 import { speak, speechSupported, useSpeaking, useSpeakingIndex } from '../lib/speech';
-import { toggleSaved, update, useStore } from '../lib/store';
-import { copyText, shareText } from '../lib/share';
+import { toggleMemorise, toggleSaved, update, useStore } from '../lib/store';
 import {
-  IconBack, IconBookmark, IconClose, IconCopy, IconForward, IconNote, IconSearch, IconShare, IconSpeaker, IconStop, IconVerses,
+  IconBack, IconBookmark, IconClose, IconForward, IconMemory, IconMore, IconNote, IconSearch, IconShare, IconSpeaker, IconStop,
 } from '../components/Icons';
-import { NotesSheet, ShareSheet, type VerseLike } from '../components/VerseSheets';
-import { Segmented, TabBar, toast } from '../components/ui';
+import { smallCaps } from '../components/Scripture';
+import { NotesSheet, QuickActions, ShareSheet, type VerseLike } from '../components/VerseSheets';
+import { buzz, HAPTIC, Segmented, TabBar, toast } from '../components/ui';
 
 function Loading({ error }: { error: string | null }) {
   return (
@@ -166,9 +166,12 @@ function Reader({ b, c, v }: { b: number; c: number; v?: number }) {
   const book = BOOKS[b - 1];
   const saved = useStore((s) => s.saved);
   const notes = useStore((s) => s.notes);
+  const memory = useStore((s) => s.memory);
   const [selected, setSelected] = useState<number | null>(v ?? null);
   const [noteFor, setNoteFor] = useState<VerseLike | null>(null);
   const [shareFor, setShareFor] = useState<VerseLike | null>(null);
+  const [moreFor, setMoreFor] = useState<VerseLike | null>(null);
+  const bar = useRef<HTMLElement>(null);
   const speakId = `chapter:${b}.${c}`;
   const speaking = useSpeaking() === speakId;
   const speakingIndex = useSpeakingIndex();
@@ -206,7 +209,7 @@ function Reader({ b, c, v }: { b: number; c: number; v?: number }) {
 
   return (
     <div className="reader-wrap">
-      <header className="bar">
+      <header className="bar reading">
         <button className="icon-btn" aria-label="Back" onClick={() => back('/bible')}><IconBack /></button>
         <button className="bar-title" onClick={() => navigate(`/bible/${book.slug}`)} aria-label={`${formatChapter(b, c)}. Choose another chapter`}>
           {formatChapter(b, c)}<small>King James Version</small>
@@ -217,11 +220,17 @@ function Reader({ b, c, v }: { b: number; c: number; v?: number }) {
             {speaking ? <IconStop /> : <IconSpeaker />}
           </button>
         ) : <span className="icon-btn" />}
+        <span className="read-progress" aria-hidden><i ref={bar} /></span>
       </header>
 
       <div
         className="scroll reader"
         ref={scroller}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          const max = el.scrollHeight - el.clientHeight;
+          if (bar.current) bar.current.style.transform = `scaleX(${max > 0 ? Math.min(1, el.scrollTop / max) : 0})`;
+        }}
         onPointerDown={(e) => { swipe.current = { x: e.clientX, y: e.clientY }; }}
         onPointerUp={(e) => {
           const s = swipe.current;
@@ -249,8 +258,8 @@ function Reader({ b, c, v }: { b: number; c: number; v?: number }) {
                   aria-pressed={selected === i + 1}
                   onClick={() => setSelected(selected === i + 1 ? null : i + 1)}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected(selected === i + 1 ? null : i + 1); } }}>
-                  <sup>{i + 1}</sup>
-                  {segments(verses[i]).map((s, si) => (s.italic ? <i key={si}>{s.text}</i> : <span key={si}>{s.text}</span>))}
+                  {i > 0 && <sup>{i + 1}</sup>}
+                  {segments(verses[i]).map((s, si) => (s.italic ? <i key={si}>{smallCaps(s.text, `${si}-`)}</i> : <span key={si}>{smallCaps(s.text, `${si}-`)}</span>))}
                   {notes[k]?.length ? <span className="note-dot" aria-label="You have a note on this verse" /> : null}{' '}
                 </span>
               );
@@ -276,11 +285,14 @@ function Reader({ b, c, v }: { b: number; c: number; v?: number }) {
             </button>
             <button onClick={() => setNoteFor(sel)}><IconNote /><span>Note</span></button>
             <button onClick={() => setShareFor(sel)}><IconShare /><span>Share</span></button>
-            <button onClick={async () => { toast((await copyText(shareText(sel, false))) ? 'Verse copied' : 'Could not copy'); }}><IconCopy /><span>Copy</span></button>
-            <button onClick={() => navigate(versePath(sel))}><IconVerses /><span>As card</span></button>
+            <button onClick={() => { const now = toggleMemorise(selKey); buzz(HAPTIC.save); toast(now ? 'Added to Memorise' : 'Removed from Memorise'); }}>
+              <IconMemory /><span>{memory[selKey] ? 'Memorising' : 'Memorise'}</span>
+            </button>
+            <button onClick={() => setMoreFor(sel)}><IconMore /><span>More</span></button>
           </div>
         </div>
       )}
+      <QuickActions verse={moreFor} onClose={() => setMoreFor(null)} onNote={() => moreFor && setNoteFor(moreFor)} onShare={() => moreFor && setShareFor(moreFor)} asCard />
       <NotesSheet verse={noteFor} onClose={() => setNoteFor(null)} />
       <ShareSheet verse={shareFor} scene={shareFor ? pickScene(keyOf(shareFor), ['earth', 'dawn', 'sky', 'dusk']) : null} onClose={() => setShareFor(null)} />
     </div>
