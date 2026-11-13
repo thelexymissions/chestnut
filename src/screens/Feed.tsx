@@ -302,7 +302,9 @@ export function Feed({ mode, first }: { mode: 'topics' | 'saved'; first?: Ref })
     },
   }), [mode, topicOf]);
 
-  const overlayOpen = !!(noteFor || shareFor || moreFor) || !hintsSeen;
+  // someone opening a shared link sees the verse first; the tips wait for a normal visit
+  const showTips = !hintsSeen && !first;
+  const overlayOpen = !!(noteFor || shareFor || moreFor) || showTips;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (overlayOpen || (e.target as Element)?.closest?.('input,textarea')) return;
@@ -325,8 +327,20 @@ export function Feed({ mode, first }: { mode: 'topics' | 'saved'; first?: Ref })
     : topics.length <= 2 ? topics.map(topicLabel).join(' · ')
     : `${topicLabel(topics[0])} +${topics.length - 1}`;
 
+  // a verse that is not on the curated list is read from the Bible itself: wait for it
+  // rather than flash a different verse first
+  const waitingForBible = needsBible && !bible.ready && !bible.error;
+  if (waitingForBible && firstKey && !cardByKey(firstKey)) {
+    return (
+      <div className="feed">
+        <div className="feed-wait" role="status">Opening the Bible…</div>
+        <TabBar overlay />
+      </div>
+    );
+  }
+
   if (!cards.length) {
-    const waiting = needsBible && !bible.ready && !bible.error;
+    const waiting = waitingForBible;
     return (
       <div className="feed empty-feed">
         <div className="empty">
@@ -353,7 +367,7 @@ export function Feed({ mode, first }: { mode: 'topics' | 'saved'; first?: Ref })
     <div className={'feed' + (clean ? ' clean' : '')}>
       <div className="feed-scroll" ref={scroller} onScroll={onScroll} tabIndex={0} aria-label="Verses">
         {cards.map((c, i) => (
-          <section className="slide" key={c.key} aria-hidden={i !== index}>
+          <section className="slide" key={c.key} inert={i !== index}>
             {Math.abs(i - index) <= 2 && <VerseCard card={c} topicId={topicOf(c)} active={i === index} handlers={handlers} />}
           </section>
         ))}
@@ -379,7 +393,7 @@ export function Feed({ mode, first }: { mode: 'topics' | 'saved'; first?: Ref })
 
       <TabBar overlay />
 
-      {!hintsSeen && <GestureTips onClose={() => update(() => ({ hintsSeen: true }))} />}
+      {showTips && <GestureTips onClose={() => update(() => ({ hintsSeen: true }))} />}
 
       <NotesSheet verse={noteFor} onClose={() => setNoteFor(null)} />
       <ShareSheet verse={shareFor?.verse ?? null} scene={shareFor?.scene ?? null} onClose={() => setShareFor(null)} />
