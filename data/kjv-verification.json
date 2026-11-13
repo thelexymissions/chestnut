@@ -1,0 +1,69 @@
+{
+ "checked": "31,102 verses in 1,189 chapters of 66 books",
+ "sources": {
+  "used": "github.com/farskipper/kjv json/verses-1769.json",
+  "crossChecked": [
+   "github.com/scrollmapper/bible_databases formats/json/KJV.json",
+   "github.com/thiagobodruk/bible json/en_kjv.json"
+  ]
+ },
+ "confirmedWordForWordByBothOtherCopies": 30787,
+ "confirmedWordForWordByOneOtherCopy": 306,
+ "spellingVariantOnly": [
+  {
+   "ref": "Joshua 19:19",
+   "words": [
+    "haphraim/hapharaim"
+   ]
+  },
+  {
+   "ref": "1 Chronicles 2:47",
+   "words": [
+    "gesham/geshan"
+   ]
+  },
+  {
+   "ref": "1 Chronicles 2:49",
+   "words": [
+    "achsa/achsah"
+   ]
+  },
+  {
+   "ref": "1 Chronicles 7:19",
+   "words": [
+    "shemidah/shemida"
+   ]
+  },
+  {
+   "ref": "2 Chronicles 2:16",
+   "words": [
+    "flotes/floats"
+   ]
+  },
+  {
+   "ref": "Jeremiah 2:22",
+   "words": [
+    "sope/soap"
+   ]
+  },
+  {
+   "ref": "Ezekiel 47:3",
+   "words": [
+    "ancles/ankles"
+   ]
+  },
+  {
+   "ref": "Malachi 3:2",
+   "words": [
+    "sope/soap"
+   ]
+  },
+  {
+   "ref": "Acts 3:7",
+   "words": [
+    "ancle/ankle"
+   ]
+  }
+ ],
+ "unconfirmed": 0
+}
