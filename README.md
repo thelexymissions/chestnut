@@ -3,7 +3,7 @@
 A verse for what's on your mind. Chestnut is an installable web app for reading, saving and sharing Bible verses:
 
 - **The cross and the name of Jesus**: a plain wooden cross on a hill at sunrise, with the name and one verse about them that changes each day. It opens the app, sits at the top of Home, greets a new person on the welcome screen, and a small cross sits above the name on shared pictures.
-- **Verse feed**: full-screen cards, one verse each, grouped by topic. Swipe up for the next card; swipe left or right for the verse after or before it.
+- **Verse feed**: full-screen cards, one verse each, grouped by topic. Swipe up for the next card; swipe left or right, or use the bar at the foot of the card, for the verse after or before it.
 - **Bible**: the whole King James Version, browsable by book and chapter, searchable by reference or by words.
 - **Saved and notes**: private to each person, stored on their own device.
 - **Memorise**: mark verses, then review them on a fixed schedule with four exercises.
@@ -49,6 +49,15 @@ To add a card, add an entry with either a new check in that script or a source. 
 ### Change the feed
 
 Edit `data/topic-verses.json` (add or remove references such as `"John 3:16"`), then run `npm run build`. To add a topic, also add it to `src/data/topics.ts` and to the `TOPICS` table in `scripts/build-curated.mjs`.
+
+## Swiping in the verse feed
+
+Up and down changes the card; left and right reads on in the same passage. The two are kept apart like this (`src/screens/Feed.tsx`):
+
+- **One direction per swipe.** The cards read every touch themselves (`touch-action: none`) and choose the direction once, after the finger has travelled 12px. Until it lifts, the other direction is off: a sideways swipe cannot change the card, and an up/down swipe cannot change the verse. A swipe within about 50° of level counts as sideways, because a thumb moves in an arc.
+- **The bar under the verse** shows the verse before, the reference and the verse after, with a dot for the place in the chapter. It stays at the foot of the card whatever the verse's length. A swipe that starts on it is sideways unless it is plainly vertical, and needs less travel.
+- **Up/down paging** is done by `usePager`, which moves the scroll position under the finger and settles on the next card after a flick or a pull of a quarter of the screen; anything less springs back. Mouse wheel, trackpad and keys still use the browser's own scroll snapping, as does the trivia deck.
+- **The place is kept.** A card remembers how far sideways it was read until the page is reloaded, so leaving it does not lose the place. Opening a verse afresh (from Home or a link) shows that verse; coming back with Back keeps the place.
 
 ## Memorise
 

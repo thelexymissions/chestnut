@@ -73,7 +73,12 @@ function sync(kind?: Kind) {
   });
 }
 
-window.addEventListener('popstate', () => sync());
+// Whether the screen now showing was gone to (a tap, a link, opening the app) rather than come back to.
+let fresh = true;
+/** True when the current screen was opened anew, false when the reader came back to it with Back. */
+export const arrivedFresh = (): boolean => fresh;
+
+window.addEventListener('popstate', () => { fresh = false; sync(); });
 window.addEventListener('hashchange', () => sync());
 
 const subscribe = (l: () => void) => {
@@ -87,6 +92,7 @@ export function navigate(to: string, opts: { replace?: boolean; plain?: boolean 
   if (to === targetRaw) return;
   if (opts.replace) window.history.replaceState(null, '', '#' + to);
   else window.history.pushState(null, '', '#' + to);
+  fresh = true;
   sync(opts.plain ? 'none' : undefined);
 }
 
