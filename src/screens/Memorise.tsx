@@ -448,7 +448,7 @@ function MemoriseHome() {
                   <li key={k}>
                     <button className="mem-row" onClick={() => setDetail(k)}>
                       <span className={'stage-dot l' + LEVELS.indexOf(lvl)} aria-hidden />
-                      <span className="mem-main"><strong>{formatRef(v)}</strong><span>{v.text}</span></span>
+                      <span className="mem-main"><strong>{formatRef(v)}</strong><span><Scripture text={v.text} /></span></span>
                       <span className={'mem-due' + (isDue(e, today) ? ' now' : '')}><em>{lvl}</em>{dueLabel(e, today)}</span>
                     </button>
                   </li>
@@ -490,7 +490,7 @@ function MemoriseHome() {
               if (!v) return null;
               return (
                 <li key={k}>
-                  <span><strong>{formatRef(v)}</strong><span>{v.text}</span></span>
+                  <span><strong>{formatRef(v)}</strong><span><Scripture text={v.text} /></span></span>
                   <button className="btn small" onClick={() => { toggleMemorise(k); buzz(HAPTIC.save); }}>Add</button>
                 </li>
               );
