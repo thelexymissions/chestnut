@@ -35,6 +35,19 @@ export interface AppState {
   memory: Record<VerseKey, MemoryEntry>;
   haptics: boolean;
   milestones: number[];
+  /** answers given in the welcome journey, and the verse it led to */
+  intro: { mood: string; area: string; need: string; verse: VerseKey } | null;
+  /** steps of the getting-started path that were completed by doing them: id → when */
+  journey: Record<string, number>;
+  /** verse cards read, for the path and the home screen */
+  reads: number;
+  factVotes: Record<string, 1 | -1>;
+  /** show a question to reflect on after every five verses */
+  reflect: boolean;
+  /** background sound: which layers are on, and how loud */
+  sound: { music: boolean; rain: boolean; forest: boolean; waves: boolean; volume: number };
+  /** the add-to-home-screen prompt: when it was last put aside, and how often */
+  install: { later: number; times: number; never: boolean };
 }
 
 const KEY = 'chestnut.state.v1';
@@ -57,6 +70,13 @@ const defaults = (): AppState => ({
   memory: {},
   haptics: true,
   milestones: [],
+  intro: null,
+  journey: {},
+  reads: 0,
+  factVotes: {},
+  reflect: true,
+  sound: { music: false, rain: false, forest: false, waves: false, volume: 0.6 },
+  install: { later: 0, times: 0, never: false },
 });
 
 function read(): AppState {
@@ -179,6 +199,28 @@ export function toggleMemorise(k: VerseKey): boolean {
 
 export function setMemory(k: VerseKey, entry: MemoryEntry) {
   update((s) => ({ memory: { ...s.memory, [k]: entry } }));
+}
+
+// ---- getting-started path, reading count, trivia votes ----
+export function markJourney(id: string) {
+  if (state.journey[id]) return;
+  update((s) => ({ journey: { ...s.journey, [id]: Date.now() } }));
+}
+
+export function countRead() {
+  update((s) => ({ reads: s.reads + 1 }));
+}
+
+/** Thumbs up (1) or down (-1) on a fact; the same thumb again takes the vote back. */
+export function voteFact(id: string, vote: 1 | -1): 1 | -1 | 0 {
+  const now = state.factVotes[id] === vote ? 0 : vote;
+  update((s) => {
+    const factVotes = { ...s.factVotes };
+    if (now === 0) delete factVotes[id];
+    else factVotes[id] = now;
+    return { factVotes };
+  });
+  return now;
 }
 
 // ---- backup ----

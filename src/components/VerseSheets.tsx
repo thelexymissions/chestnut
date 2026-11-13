@@ -7,7 +7,7 @@ import {
 } from '../lib/share';
 import type { Scene } from '../lib/scenes';
 import { speak, speechSupported, useSpeaking } from '../lib/speech';
-import { addNote, deleteNote, editNote, toggleMemorise, toggleSaved, useStore } from '../lib/store';
+import { addNote, deleteNote, editNote, markJourney, toggleMemorise, toggleSaved, useStore } from '../lib/store';
 import {
   IconBook, IconBookmark, IconCheck, IconCopy, IconDownload, IconEdit, IconImage, IconMemory, IconNote, IconPalette,
   IconShare, IconSpeaker, IconStop, IconTrash, IconVerses, IconWhatsApp,
@@ -147,11 +147,12 @@ export function ShareSheet({ verse, scene, onClose }: { verse: VerseLike | null;
         options={[{ value: 'story', label: 'Story (tall)' }, { value: 'square', label: 'Square' }]}
       />
       <div className="share-grid">
-        <a className="share-btn wa" href={whatsappUrl(verse)} target="_blank" rel="noopener noreferrer">
+        <a className="share-btn wa" href={whatsappUrl(verse)} target="_blank" rel="noopener noreferrer" onClick={() => markJourney('share')}>
           <IconWhatsApp size={24} /><span>WhatsApp</span>
         </a>
         <button className="share-btn" disabled={busy} onClick={() => withImage(async (b) => {
           const r = await shareImage(verse, b);
+          if (r !== 'cancelled') markJourney('share');
           if (r === 'downloaded') toast('Picture saved to your downloads');
         })}>
           <IconImage /><span>Share picture</span>
@@ -159,15 +160,15 @@ export function ShareSheet({ verse, scene, onClose }: { verse: VerseLike | null;
         <button className="share-btn" disabled={busy} onClick={() => withImage((b) => { downloadBlob(b, imageFileName(verse)); toast('Picture saved'); })}>
           <IconDownload /><span>Save picture</span>
         </button>
-        <button className="share-btn" onClick={async () => { toast((await copyText(shareText(verse))) ? 'Verse copied' : 'Could not copy'); }}>
+        <button className="share-btn" onClick={async () => { markJourney('share'); toast((await copyText(shareText(verse))) ? 'Verse copied' : 'Could not copy'); }}>
           <IconCopy /><span>Copy text</span>
         </button>
         {canNativeShare() && (
-          <button className="share-btn" onClick={() => nativeShare(verse)}>
+          <button className="share-btn" onClick={async () => { if (await nativeShare(verse)) markJourney('share'); }}>
             <IconShare /><span>More apps</span>
           </button>
         )}
-        <a className="share-btn" href={telegramUrl(verse)} target="_blank" rel="noopener noreferrer">
+        <a className="share-btn" href={telegramUrl(verse)} target="_blank" rel="noopener noreferrer" onClick={() => markJourney('share')}>
           <IconShare /><span>Telegram</span>
         </a>
       </div>
@@ -205,7 +206,7 @@ export function QuickActions({ verse, onClose, onNote, onShare, onChangeBackgrou
           <IconCopy /><span>Copy verse</span>
         </button>
         <button onClick={act(onShare)}><IconShare /><span>Share as text or picture</span></button>
-        <a href={whatsappUrl(verse)} target="_blank" rel="noopener noreferrer" onClick={onClose}>
+        <a href={whatsappUrl(verse)} target="_blank" rel="noopener noreferrer" onClick={() => { markJourney('share'); onClose(); }}>
           <IconWhatsApp /><span>Send on WhatsApp</span>
         </a>
         <button onClick={act(onNote)}><IconNote /><span>Add a note</span></button>

@@ -6,6 +6,10 @@ A verse for what's on your mind. Chestnut is an installable web app for reading,
 - **Bible**: the whole King James Version, browsable by book and chapter, searchable by reference or by words.
 - **Saved and notes**: private to each person, stored on their own device.
 - **Memorise**: mark verses, then review them on a fixed schedule with four exercises.
+- **Trivia**: a second deck of cards with Bible facts, switched to from the feed and never mixed with the verses.
+- **Welcome**: three taps about how you are, a verse for it, a first go at learning it, then a short path that introduces the rest.
+- **Reflection**: one open question after every five verses; can be switched off.
+- **Sound**: an instrumental pad, rain, forest and waves, generated in the app.
 - **Sharing**: WhatsApp, the phone's share sheet, copy, and share-as-picture.
 
 There is no server and no account. Everything a person saves stays in their browser.
@@ -28,6 +32,15 @@ No verse text is typed by hand anywhere in this project.
 - `scripts/build-curated.mjs` (run by `npm run build`) looks each reference up in `kjv.json` and writes `src/data/curated.json`. It stops the build if a reference does not exist.
 - `data/curated-review.md` shows every feed verse under its topic, for proofreading.
 
+### Trivia facts
+
+`data/facts.json` holds the trivia cards. `scripts/build-facts.mjs` (run by `npm run build`) refuses any card that is not backed in one of two ways:
+
+- **`check`**: the claim is recomputed from `kjv.json` and must match both the expected value and the wording shown (for example, that Esther 8:9 is the longest verse at 90 words).
+- **`sources`**: at least one named, linked reference, for cards about the Bible's history.
+
+To add a card, add an entry with either a new check in that script or a source. Thumbs up and down are stored on the device; a card thumbed down moves to the end of that person's deck.
+
 ### Change the feed
 
 Edit `data/topic-verses.json` (add or remove references such as `"John 3:16"`), then run `npm run build`. To add a topic, also add it to `src/data/topics.ts` and to the `TOPICS` table in `scripts/build-curated.mjs`.
@@ -46,10 +59,14 @@ Nothing here is generated or judged by software; the rules are in `src/lib/memor
 
 | Path | What it holds |
 |---|---|
-| `src/screens/` | Home (topics), Feed, Bible, Saved, Memorise, Settings |
-| `src/lib/` | Bible lookup and search, saved state, memorising rules, backgrounds, sharing, read-aloud |
+| `src/screens/` | Welcome, Home, Feed, Trivia, Bible, Saved, Memorise, Settings |
+| `src/lib/` | Bible lookup and search, saved state, memorising rules, the welcome and path, trivia deck, sound, backgrounds, sharing, read-aloud |
 | `src/data/` | Topics and the generated verse list |
-| `scripts/` | Bible verification, verse list builder, icon generator |
+| `scripts/` | Bible verification, verse list builder, trivia builder, icon generator |
+
+## Sound
+
+Everything heard is synthesised with the Web Audio API in `src/lib/sound.ts`; no recordings are bundled. The sound sheet also links out to Spotify and YouTube searches for worship artists, whose recordings are their own.
 
 ## Licence notes
 

@@ -4,13 +4,18 @@ import { loadBible } from './lib/bible';
 import { useRoute } from './lib/router';
 import { grainUrl } from './lib/scenes';
 import { getState, touchStreak, update, useStore } from './lib/store';
+import { initSound } from './lib/sound';
+import { InstallHost } from './components/InstallPrompt';
+import { SoundHost } from './components/Sound';
 import { celebrate, CelebrationHost, ToastHost } from './components/ui';
 import { Bible } from './screens/Bible';
 import { Feed } from './screens/Feed';
-import { Home, NamePrompt } from './screens/Home';
+import { Home } from './screens/Home';
 import { Memorise } from './screens/Memorise';
 import { Saved } from './screens/Saved';
 import { Settings } from './screens/Settings';
+import { Trivia } from './screens/Trivia';
+import { Welcome } from './screens/Welcome';
 
 const SCALES = [0.9, 1, 1.14];
 
@@ -23,10 +28,11 @@ export function App() {
   const grain = useMemo(() => grainUrl(), []);
 
   useEffect(() => {
+    initSound();
     touchStreak();
     // a quiet marker for a week, a month, a hundred days and a year of opening the app
     const { streak, milestones } = getState();
-    if ([7, 30, 100, 365].includes(streak.count) && !milestones.includes(streak.count)) {
+    if ([3, 7, 30, 100, 365].includes(streak.count) && !milestones.includes(streak.count)) {
       update((s) => ({ milestones: [...s.milestones, streak.count] }));
       window.setTimeout(() => celebrate(`${streak.count} days in a row`, 'A little each day.'), 900);
     }
@@ -49,7 +55,11 @@ export function App() {
   let screen;
   if (section === 'feed') {
     const mode = a === 'saved' ? 'saved' : 'topics';
-    screen = <Feed key={mode} mode={mode} />;
+    screen = <Feed key={mode} mode={mode} coach={route.query.get('coach') ?? undefined} />;
+  } else if (section === 'trivia') {
+    screen = <Trivia key={a ?? 'deck'} first={a} />;
+  } else if (section === 'welcome') {
+    screen = <Welcome />;
   } else if (section === 'v' && bookBySlug(a ?? '') && Number(b) > 0 && Number(c) > 0) {
     // a shared link: show the verse straight away, no questions first
     const first = { b: bookBySlug(a)!.n, c: Number(b), v: Number(c) };
@@ -63,12 +73,14 @@ export function App() {
   } else if (section === 'settings') {
     screen = <Settings />;
   } else {
-    screen = onboarded ? <Home /> : <NamePrompt />;
+    screen = onboarded ? <Home /> : <Welcome />;
   }
 
   return (
     <div className="app" style={{ '--scale': SCALES[textSize] ?? 1, '--grain': grain ? `url("${grain}")` : 'none' } as CSSProperties}>
       {screen}
+      <SoundHost />
+      <InstallHost />
       <ToastHost />
       <CelebrationHost />
     </div>

@@ -261,7 +261,17 @@ function StepView({ step, verse, seed, memoryKeys, onDone }: { step: Step; verse
 // =====================================================================
 interface VerseResult { key: VerseKey; passed: boolean; firstTry: number; prompts: number; next: string; level: Level }
 
-function Session({ keys, free }: { keys: VerseKey[]; free?: Step }) {
+/**
+ * `plan` replaces the usual steps (the welcome uses a shorter first review);
+ * `onFinish` is called instead of showing the closing summary.
+ */
+export function Session({ keys, free, plan: fixed, onFinish, onStop }: {
+  keys: VerseKey[];
+  free?: Step;
+  plan?: Step[];
+  onFinish?: (passed: boolean) => void;
+  onStop?: () => void;
+}) {
   // the list is fixed when the sitting starts, so finishing a verse does not reshuffle it
   const [queue] = useState(keys);
   const [nonce] = useState(() => Date.now().toString(36));
@@ -276,7 +286,7 @@ function Session({ keys, free }: { keys: VerseKey[]; free?: Step }) {
   const verse = key ? verseOf(key) : undefined;
   const entry: MemoryEntry | undefined = key ? getState().memory[key] : undefined;
   // the plan is fixed from the level the verse had when its turn began
-  const plan = useMemo(() => (free ? [free] : planFor(entry?.box ?? 0)), [key, free]); // eslint-disable-line react-hooks/exhaustive-deps
+  const plan = useMemo(() => fixed ?? (free ? [free] : planFor(entry?.box ?? 0)), [key, free, fixed]); // eslint-disable-line react-hooks/exhaustive-deps
   const totalSteps = queue.length * plan.length;
   const doneSteps = vi * plan.length + si + (showResult ? plan.length - si : 0);
 
@@ -328,6 +338,7 @@ function Session({ keys, free }: { keys: VerseKey[]; free?: Step }) {
   };
 
   const nextVerse = () => {
+    if (vi + 1 >= queue.length && onFinish) { onFinish(results.every((r) => r.passed)); return; }
     setShowResult(false);
     setTally({ firstTry: 0, prompts: 0, self: null });
     setSi(0);
@@ -339,7 +350,7 @@ function Session({ keys, free }: { keys: VerseKey[]; free?: Step }) {
   return (
     <div className="screen session">
       <header className="session-bar">
-        <button className="icon-btn" aria-label="Stop" onClick={() => { if (results.length === 0 && si === 0 || window.confirm('Stop here? Verses you have finished stay counted.')) back('/memorise'); }}><IconClose /></button>
+        <button className="icon-btn" aria-label="Stop" onClick={() => { if (results.length === 0 && si === 0 || window.confirm('Stop here? Verses you have finished stay counted.')) { if (onStop) onStop(); else back('/memorise'); } }}><IconClose /></button>
         <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={totalSteps} aria-valuenow={doneSteps} aria-label="Progress">
           <i style={{ transform: `scaleX(${totalSteps ? doneSteps / totalSteps : 0})` }} />
         </div>
@@ -360,7 +371,7 @@ function Session({ keys, free }: { keys: VerseKey[]; free?: Step }) {
             {free && <p className="sub">Extra practice does not change your review schedule.</p>}
           </div>
           <div className="ex-foot">
-            <button className="btn wide big" onClick={nextVerse}>{vi + 1 < queue.length ? 'Next verse' : 'Finish'} <IconForward size={18} /></button>
+            <button className="btn wide big" onClick={nextVerse}>{vi + 1 < queue.length ? 'Next verse' : onFinish ? 'Continue' : 'Finish'} <IconForward size={18} /></button>
           </div>
         </div>
       ) : (

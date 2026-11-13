@@ -4,17 +4,19 @@ import { topicById, topicLabel } from '../data/topics';
 import { getVerse, loadBible, stepRef, useBible } from '../lib/bible';
 import { chapterPath, formatRef, formatRefShort, keyOf, refOf, type Ref, type VerseKey } from '../lib/books';
 import { buildFeed, cardByKey, displayTopic, sessionSeed, type Card } from '../lib/feed';
+import { PROMPTS, type Prompt } from '../lib/journey';
 import { navigate } from '../lib/router';
 import { hash, nextScene, pickScene, sceneById, type Mood, type Scene } from '../lib/scenes';
 import { speak, speechSupported, useSpeaking } from '../lib/speech';
-import { save, toggleSaved, update, useStore } from '../lib/store';
+import { countRead, dayNumber, getState, markJourney, save, toggleSaved, update, useStore } from '../lib/store';
 import {
   IconBack, IconBook, IconBookmark, IconForward, IconGrid, IconMore, IconNote, IconReturn, IconShare, IconSpeaker, IconStop,
 } from '../components/Icons';
 import { SceneView } from '../components/Scene';
+import { SoundButton } from '../components/Sound';
 import { Scripture } from '../components/Scripture';
 import { NotesSheet, QuickActions, ShareSheet, type VerseLike } from '../components/VerseSheets';
-import { buzz, HAPTIC, TabBar, toast } from '../components/ui';
+import { buzz, HAPTIC, ModeSwitch, TabBar, toast } from '../components/ui';
 
 const ALL_MOODS: Mood[] = ['dawn', 'sky', 'deep', 'forest', 'ember', 'earth', 'dusk', 'light'];
 
@@ -110,7 +112,7 @@ const Panel = memo(function Panel({ verse, topic, origin, reveal, onReturn, onSt
       <span className="card-rule" aria-hidden />
       <div className="card-refrow">
         <button className="refstep" aria-label="Previous verse" disabled={!canPrev} onClick={() => onStep?.(-1)}><IconBack size={17} /></button>
-        <button className="card-ref" onClick={() => navigate(chapterPath(verse.b, verse.c, verse.v))} aria-label={`${ref}. Read the chapter`}>
+        <button className="card-ref" onClick={() => { markJourney('around'); navigate(chapterPath(verse.b, verse.c, verse.v)); }} aria-label={`${ref}. Read the chapter`}>
           <b className="full">{ref.length > 17 ? formatRefShort(verse) : ref}</b><b className="short">{formatRefShort(verse)}</b><span>KJV</span><IconBook size={14} />
         </button>
         <button className="refstep" aria-label="Next verse" disabled={!canNext} onClick={() => onStep?.(1)}><IconForward size={17} /></button>
@@ -156,6 +158,13 @@ const VerseCard = memo(function VerseCard({ card, topicId, active, hero, bibleRe
 
   useEffect(() => { if (!active) setOffset(0); }, [active]);
 
+  // a verse counts as read once it has been on screen for a moment
+  useEffect(() => {
+    if (!active || readThisVisit.has(card.key)) return;
+    const t = window.setTimeout(() => { readThisVisit.add(card.key); countRead(); }, 1400);
+    return () => window.clearTimeout(t);
+  }, [active, card.key]);
+
   const setDrag = (px: number) => track.current?.style.setProperty('--drag', `${px}px`);
 
   /** Slides the row of verses to rest: on the neighbour (dir) or back where it was (0). */
@@ -175,6 +184,7 @@ const VerseCard = memo(function VerseCard({ card, topicId, active, hero, bibleRe
       finished = true;
       el.removeEventListener('transitionend', done);
       flushSync(() => setOffset((o) => o + dir));
+      markJourney('around');
       el.classList.remove('settling');
       setDrag(0);
       busy.current = false;
@@ -349,28 +359,68 @@ const VerseCard = memo(function VerseCard({ card, topicId, active, hero, bibleRe
 
 const positions = new Map<string, number>();
 
+const readThisVisit = new Set<VerseKey>();
+
+/** The gestures, drawn: four small moving pictures with a word or two each. */
 function GestureTips({ onClose }: { onClose: () => void }) {
-  const tips: [string, string][] = [
-    ['Swipe up', 'Next verse on your topics'],
-    ['Swipe left or right', 'The verse after or before it'],
-    ['Double-tap', 'Save it'],
-    ['Press and hold', 'Copy, share, memorise and more'],
-    ['Tap the reference', 'Read the whole chapter'],
-    ['Tap', 'Hide the buttons'],
-  ];
+  const tips: [string, string][] = [['up', 'Next verse'], ['side', 'Before and after'], ['double', 'Save'], ['hold', 'More']];
   return (
     <div className="tips" data-nogesture role="dialog" aria-label="How to use the verse feed">
       <div className="tips-box">
-        <h2>How it works</h2>
-        <ul>{tips.map(([a, b]) => <li key={a}><strong>{a}</strong><span>{b}</span></li>)}</ul>
+        <div className="tips-grid">
+          {tips.map(([kind, label]) => (
+            <figure key={kind} className={'tip tip-' + kind}>
+              <span className="tip-card" aria-hidden><i className="tip-dot" /></span>
+              <figcaption>{label}</figcaption>
+            </figure>
+          ))}
+        </div>
         <button className="btn wide" onClick={onClose}>Start reading</button>
       </div>
     </div>
   );
 }
 
-export function Feed({ mode, first }: { mode: 'topics' | 'saved'; first?: Ref }) {
+// ---------- a pause to reflect ----------
+/** One open question after every five verses. It never suggests an answer. */
+const ReflectCard = memo(function ReflectCard({ prompt, about, active }: { prompt: Prompt; about?: Card; active: boolean }) {
+  const on = useStore((s) => s.reflect);
+  const scene = pickScene('reflect:' + prompt.text, ['dusk', 'deep', 'forest']);
+  return (
+    <div className={`card reflect ink-${scene.ink}${active ? ' active' : ''}`}>
+      <SceneView scene={scene} live={active} />
+      <div className="reflect-body">
+        <span className="breath" aria-hidden><i /><i /><i /></span>
+        <div className="card-topic">Pause and reflect</div>
+        <h2 className="reflect-q">{prompt.text}</h2>
+        {prompt.about === 'last' && about && <p className="reflect-ref">{formatRef(about)}</p>}
+      </div>
+      <button className="reflect-off" data-nogesture onClick={() => {
+        update((s) => ({ reflect: !s.reflect }));
+        toast(on ? 'Reflection questions are off. Turn them back on in Settings.' : 'Reflection questions are back on.');
+      }}>
+        {on ? 'Stop showing these' : 'Show these again'}
+      </button>
+    </div>
+  );
+});
+
+type Item = { kind: 'verse'; key: string; card: Card } | { kind: 'reflect'; key: string; prompt: Prompt; about: Card };
+const EVERY = 5;
+
+/** A small pointer for someone who arrived from a step on the home path. */
+const COACH: Record<string, string> = {
+  explore: 'Swipe up for the next verse',
+  around: 'Swipe left or right',
+  save: 'Double-tap to save',
+  share: 'Tap Share',
+};
+
+export function Feed({ mode, first, coach }: { mode: 'topics' | 'saved'; first?: Ref; coach?: string }) {
   const topics = useStore((s) => s.topics);
+  // fixed when the feed opens, so switching the questions off does not shift the cards mid-scroll
+  const [reflectOn] = useState(() => getState().reflect);
+  const [coachOn, setCoachOn] = useState(!!coach && !!COACH[coach]);
   const savedMap = useStore((s) => s.saved);
   const hintsSeen = useStore((s) => s.hintsSeen);
   const firstKey = first ? keyOf(first) : undefined;
@@ -402,6 +452,19 @@ export function Feed({ mode, first }: { mode: 'topics' | 'saved'; first?: Ref })
     }
     return list;
   }, [mode, topics, firstKey, savedKeys, bibleReady]);
+
+  // the verses, with a question to reflect on after every fifth one
+  const items: Item[] = useMemo(() => {
+    const out: Item[] = [];
+    const day = dayNumber();
+    cards.forEach((card, i) => {
+      out.push({ kind: 'verse', key: card.key, card });
+      if (reflectOn && mode === 'topics' && (i + 1) % EVERY === 0 && i < cards.length - 1) {
+        out.push({ kind: 'reflect', key: 'reflect-' + i, prompt: PROMPTS[(Math.floor(i / EVERY) + day) % PROMPTS.length], about: card });
+      }
+    });
+    return out;
+  }, [cards, reflectOn, mode]);
 
   const sig = `${mode}|${topics.join(',')}|${firstKey ?? ''}`;
   const scroller = useRef<HTMLDivElement>(null);
@@ -452,16 +515,24 @@ export function Feed({ mode, first }: { mode: 'topics' | 'saved'; first?: Ref })
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (overlayOpen || (e.target as Element)?.closest?.('input,textarea')) return;
-      const c = cards[index];
+      const c = items[index];
       if (['ArrowDown', 'PageDown', 'j', ' '].includes(e.key)) { e.preventDefault(); go(1); }
       else if (['ArrowUp', 'PageUp', 'k'].includes(e.key)) { e.preventDefault(); go(-1); }
-      else if (!c) return;
+      else if (!c || c.kind !== 'verse') return;
       else if (e.key === 'ArrowRight') cardApi.current?.step(1);
       else if (e.key === 'ArrowLeft') cardApi.current?.step(-1);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [cards, index, go, overlayOpen]);
+  }, [items, index, go, overlayOpen]);
+
+  // the pointer from the home path leaves once the person has moved or after a few seconds
+  useEffect(() => {
+    if (!coachOn) return;
+    const t = window.setTimeout(() => setCoachOn(false), 7000);
+    return () => window.clearTimeout(t);
+  }, [coachOn]);
+  useEffect(() => { if (index > 0) setCoachOn(false); }, [index]);
 
   const label = mode === 'saved'
     ? 'Saved verses'
@@ -507,11 +578,13 @@ export function Feed({ mode, first }: { mode: 'topics' | 'saved'; first?: Ref })
   return (
     <div className={'feed' + (clean ? ' clean' : '')}>
       <div className="feed-scroll" ref={scroller} onScroll={onScroll} tabIndex={0} aria-label="Verses">
-        {cards.map((c, i) => (
-          <section className="slide" key={c.key} inert={i !== index}>
-            {Math.abs(i - index) <= 2 && (
-              <VerseCard card={c} topicId={topicOf(c)} active={i === index} hero={!!first && i === index} bibleReady={bibleReady} handlers={handlers} api={cardApi} />
-            )}
+        {items.map((it, i) => (
+          <section className="slide" key={it.key} inert={i !== index}>
+            {Math.abs(i - index) <= 2 && (it.kind === 'verse' ? (
+              <VerseCard card={it.card} topicId={topicOf(it.card)} active={i === index} hero={!!first && i === index} bibleReady={bibleReady} handlers={handlers} api={cardApi} />
+            ) : (
+              <ReflectCard prompt={it.prompt} about={it.about} active={i === index} />
+            ))}
           </section>
         ))}
         <section className="slide end-slide">
@@ -531,8 +604,10 @@ export function Feed({ mode, first }: { mode: 'topics' | 'saved'; first?: Ref })
         <button className="pill" onClick={() => navigate(mode === 'saved' ? '/saved' : '/')} aria-label={`${label}. Change topics`}>
           <IconGrid size={16} /><span>{label}</span>
         </button>
-        <span className="feed-count" aria-hidden>{Math.min(index + 1, cards.length)} / {cards.length}</span>
+        <span className="feed-tools"><SoundButton />{mode === 'topics' && <ModeSwitch mode="verses" />}</span>
       </header>
+
+      {coachOn && coach && <div className={'coach coach-' + coach} role="status" onClick={() => setCoachOn(false)}>{COACH[coach]}</div>}
 
       <TabBar overlay />
 

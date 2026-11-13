@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { duck } from './sound';
 import { getState } from './store';
 
 // Read-aloud with the phone's own voice. Verses are queued one at a time:
@@ -8,7 +9,7 @@ let current: string | null = null;
 let currentIndex = -1;
 let token = 0;
 const listeners = new Set<() => void>();
-const emit = () => listeners.forEach((l) => l());
+const emit = () => { duck(current !== null); listeners.forEach((l) => l()); };
 
 export const speechSupported = () => typeof window !== 'undefined' && 'speechSynthesis' in window;
 

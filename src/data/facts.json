@@ -1,0 +1,817 @@
+[
+ {
+  "id": "books-66",
+  "cat": "numbers",
+  "q": "How many books are in the Bible?",
+  "a": "66",
+  "more": "39 in the Old Testament and 27 in the New. This is the Protestant Bible, which includes the King James Version. Catholic Bibles have 46 Old Testament books.",
+  "refs": [
+   {
+    "b": 1,
+    "c": 1,
+    "v": 1
+   },
+   {
+    "b": 66,
+    "c": 22,
+    "v": 21
+   }
+  ],
+  "sources": [
+   {
+    "name": "Britannica Kids: Bible",
+    "url": "https://kids.britannica.com/students/article/Bible/273205"
+   }
+  ],
+  "checked": true
+ },
+ {
+  "id": "chapters-1189",
+  "cat": "numbers",
+  "q": "How many chapters does the Bible have?",
+  "a": "1,189",
+  "more": "929 in the Old Testament and 260 in the New.",
+  "refs": [],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "verses-31102",
+  "cat": "numbers",
+  "q": "How many verses are in the King James Bible?",
+  "a": "31,102",
+  "more": "About three in every four are in the Old Testament: 23,145, against 7,957 in the New.",
+  "refs": [],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "shortest-verse",
+  "cat": "numbers",
+  "q": "What is the shortest verse in the Bible?",
+  "a": "Jesus wept.",
+  "more": "John 11:35. Two words and nine letters in the King James Version.",
+  "refs": [
+   {
+    "b": 43,
+    "c": 11,
+    "v": 35
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "longest-verse",
+  "cat": "numbers",
+  "q": "Which is the longest verse in the Bible?",
+  "a": "Esther 8:9",
+  "more": "It runs to 90 words in the King James Version.",
+  "refs": [
+   {
+    "b": 17,
+    "c": 8,
+    "v": 9
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "longest-chapter",
+  "cat": "numbers",
+  "q": "Which chapter is the longest?",
+  "a": "Psalm 119",
+  "more": "It has 176 verses. The next longest, Numbers 7, has 89.",
+  "refs": [
+   {
+    "b": 19,
+    "c": 119,
+    "v": 1
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "shortest-chapter",
+  "cat": "numbers",
+  "q": "Which chapter is the shortest?",
+  "a": "Psalm 117",
+  "more": "Just two verses.",
+  "refs": [
+   {
+    "b": 19,
+    "c": 117,
+    "v": 1
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "middle-chapter",
+  "cat": "numbers",
+  "q": "Which chapter sits in the very middle of the Bible?",
+  "a": "Psalm 117",
+  "more": "There are 594 chapters before it and 594 after it. It is also the shortest chapter.",
+  "refs": [
+   {
+    "b": 19,
+    "c": 117,
+    "v": 1
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "middle-verses",
+  "cat": "numbers",
+  "q": "Does the Bible have a middle verse?",
+  "a": "It has two",
+  "more": "The King James Version has an even number of verses, so the middle falls between Psalm 103:1 and Psalm 103:2.",
+  "refs": [
+   {
+    "b": 19,
+    "c": 103,
+    "v": 1
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "most-chapters",
+  "cat": "numbers",
+  "q": "Which book has the most chapters?",
+  "a": "Psalms",
+  "more": "150 psalms and 2,461 verses, more than any other book.",
+  "refs": [
+   {
+    "b": 19,
+    "c": 1,
+    "v": 1
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "one-chapter",
+  "cat": "numbers",
+  "q": "How many books have only one chapter?",
+  "a": "Five",
+  "more": "Obadiah, Philemon, 2 John, 3 John and Jude.",
+  "refs": [
+   {
+    "b": 31,
+    "c": 1,
+    "v": 1
+   },
+   {
+    "b": 65,
+    "c": 1,
+    "v": 1
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "fewest-verses",
+  "cat": "numbers",
+  "q": "Which book has the fewest verses?",
+  "a": "2 John",
+  "more": "Only 13 verses. 3 John is next with 14.",
+  "refs": [
+   {
+    "b": 63,
+    "c": 1,
+    "v": 1
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "nt-letters",
+  "cat": "numbers",
+  "q": "How many New Testament books are letters?",
+  "a": "21 of the 27",
+  "more": "Romans through Jude. The other six are the four Gospels, Acts and Revelation.",
+  "refs": [
+   {
+    "b": 45,
+    "c": 1,
+    "v": 1
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "psalm-119-shape",
+  "cat": "numbers",
+  "q": "Why does Psalm 119 have exactly 176 verses?",
+  "a": "22 × 8",
+  "more": "It is a poem in 22 sections of eight verses, one section for each letter of the Hebrew alphabet.",
+  "refs": [
+   {
+    "b": 19,
+    "c": 119,
+    "v": 1
+   }
+  ],
+  "sources": [
+   {
+    "name": "Wikipedia: Psalm 119",
+    "url": "https://en.wikipedia.org/wiki/Psalm_119"
+   }
+  ],
+  "checked": true
+ },
+ {
+  "id": "proverbs-31",
+  "cat": "numbers",
+  "q": "How many chapters are in Proverbs?",
+  "a": "31",
+  "more": "Enough to read one a day through a long month.",
+  "refs": [
+   {
+    "b": 20,
+    "c": 1,
+    "v": 1
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "first-last-words",
+  "cat": "words",
+  "q": "What are the first and last words of the Bible?",
+  "a": "In the beginning … Amen",
+  "more": "Genesis 1:1 opens with the first; Revelation 22:21 closes with the second.",
+  "refs": [
+   {
+    "b": 1,
+    "c": 1,
+    "v": 1
+   },
+   {
+    "b": 66,
+    "c": 22,
+    "v": 21
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "word-bible",
+  "cat": "words",
+  "q": "How many times does the word “Bible” appear in the Bible?",
+  "a": "Never",
+  "more": "The word is not used anywhere in the King James text.",
+  "refs": [],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "christian-three",
+  "cat": "words",
+  "q": "How often does the word “Christian” appear?",
+  "a": "Three times",
+  "more": "Acts 11:26, Acts 26:28 and 1 Peter 4:16, in the King James Version.",
+  "refs": [
+   {
+    "b": 44,
+    "c": 11,
+    "v": 26
+   },
+   {
+    "b": 44,
+    "c": 26,
+    "v": 28
+   },
+   {
+    "b": 60,
+    "c": 4,
+    "v": 16
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "antioch",
+  "cat": "words",
+  "q": "Where were believers first called Christians?",
+  "a": "Antioch",
+  "more": "The book of Acts records it in chapter 11.",
+  "refs": [
+   {
+    "b": 44,
+    "c": 11,
+    "v": 26
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "grandmother",
+  "cat": "words",
+  "q": "The word “grandmother” appears once. Who is she?",
+  "a": "Lois",
+  "more": "Timothy's grandmother, named in 2 Timothy 1:5.",
+  "refs": [
+   {
+    "b": 55,
+    "c": 1,
+    "v": 5
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "eternity",
+  "cat": "words",
+  "q": "How many times does the word “eternity” appear?",
+  "a": "Once",
+  "more": "In Isaiah 57:15, in the King James Version.",
+  "refs": [
+   {
+    "b": 23,
+    "c": 57,
+    "v": 15
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "ezra-letters",
+  "cat": "words",
+  "q": "Which letter of the alphabet is missing from Ezra 7:21?",
+  "a": "J",
+  "more": "In the King James Version this verse uses every other letter. No verse uses all 26.",
+  "refs": [
+   {
+    "b": 15,
+    "c": 7,
+    "v": 21
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "psalm-107-refrain",
+  "cat": "words",
+  "q": "Which psalm repeats the same verse four times?",
+  "a": "Psalm 107",
+  "more": "The same line of praise returns in verses 8, 15, 21 and 31.",
+  "refs": [
+   {
+    "b": 19,
+    "c": 107,
+    "v": 8
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "esther-god",
+  "cat": "words",
+  "q": "Which book never uses the word “God”?",
+  "a": "Esther",
+  "more": "Neither “God” nor “Lord” appears in it in the King James Version. The Song of Solomon is the only other book where that is so.",
+  "refs": [
+   {
+    "b": 17,
+    "c": 1,
+    "v": 1
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "methuselah",
+  "cat": "people",
+  "q": "Who lived the longest in the Bible?",
+  "a": "Methuselah",
+  "more": "969 years, according to Genesis 5:27.",
+  "refs": [
+   {
+    "b": 1,
+    "c": 5,
+    "v": 27
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "balaam-donkey",
+  "cat": "people",
+  "q": "Which animal speaks in the book of Numbers?",
+  "a": "A donkey",
+  "more": "Balaam's donkey, in Numbers 22:28. The King James Version calls it an ass.",
+  "refs": [
+   {
+    "b": 4,
+    "c": 22,
+    "v": 28
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "zimri",
+  "cat": "people",
+  "q": "How long was the shortest reign of a king in the Bible?",
+  "a": "Seven days",
+  "more": "Zimri, king of Israel, in 1 Kings 16:15.",
+  "refs": [
+   {
+    "b": 11,
+    "c": 16,
+    "v": 15
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "manasseh",
+  "cat": "people",
+  "q": "Which king of Israel or Judah reigned the longest?",
+  "a": "Manasseh",
+  "more": "55 years in Jerusalem, having begun at the age of twelve.",
+  "refs": [
+   {
+    "b": 12,
+    "c": 21,
+    "v": 1
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "forty-days",
+  "cat": "people",
+  "q": "What do the flood, Moses on the mountain and Jesus in the wilderness share?",
+  "a": "Forty days and forty nights",
+  "more": "The same span is given for all three.",
+  "refs": [
+   {
+    "b": 1,
+    "c": 7,
+    "v": 12
+   },
+   {
+    "b": 2,
+    "c": 24,
+    "v": 18
+   },
+   {
+    "b": 40,
+    "c": 4,
+    "v": 2
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "first-miracle",
+  "cat": "people",
+  "q": "What was the first miracle of Jesus?",
+  "a": "Water into wine",
+  "more": "At a wedding in Cana of Galilee, told in John chapter 2.",
+  "refs": [
+   {
+    "b": 43,
+    "c": 2,
+    "v": 11
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "lords-prayer",
+  "cat": "people",
+  "q": "Where is the Lord's Prayer found?",
+  "a": "In two places",
+  "more": "Matthew chapter 6 and Luke chapter 11.",
+  "refs": [
+   {
+    "b": 40,
+    "c": 6,
+    "v": 9
+   },
+   {
+    "b": 42,
+    "c": 11,
+    "v": 2
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "ten-commandments",
+  "cat": "people",
+  "q": "Where are the Ten Commandments written?",
+  "a": "Exodus 20 and Deuteronomy 5",
+  "more": "They are given twice.",
+  "refs": [
+   {
+    "b": 2,
+    "c": 20,
+    "v": 3
+   },
+   {
+    "b": 5,
+    "c": 5,
+    "v": 7
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "paul-letters",
+  "cat": "people",
+  "q": "How many New Testament letters open with Paul's name?",
+  "a": "Thirteen",
+  "more": "Romans through Philemon each begin with the word “Paul”.",
+  "refs": [
+   {
+    "b": 45,
+    "c": 1,
+    "v": 1
+   },
+   {
+    "b": 57,
+    "c": 1,
+    "v": 1
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "women-books",
+  "cat": "people",
+  "q": "Which books of the Bible are named after women?",
+  "a": "Ruth and Esther",
+  "more": "Two of the 66.",
+  "refs": [
+   {
+    "b": 8,
+    "c": 1,
+    "v": 16
+   },
+   {
+    "b": 17,
+    "c": 4,
+    "v": 14
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "apostles-list",
+  "cat": "people",
+  "q": "Where are the twelve apostles listed by name?",
+  "a": "Matthew 10",
+  "more": "The list begins at verse 2.",
+  "refs": [
+   {
+    "b": 40,
+    "c": 10,
+    "v": 2
+   }
+  ],
+  "sources": [],
+  "checked": true
+ },
+ {
+  "id": "ot-language",
+  "cat": "history",
+  "q": "What language was the Old Testament written in?",
+  "a": "Hebrew",
+  "more": "Almost entirely, with a few short passages in Aramaic.",
+  "refs": [],
+  "sources": [
+   {
+    "name": "Britannica: Biblical translation",
+    "url": "https://britannica.com/topic/biblical-translation"
+   }
+  ],
+  "checked": false
+ },
+ {
+  "id": "word-origin",
+  "cat": "history",
+  "q": "What does the word “Bible” mean?",
+  "a": "The books",
+  "more": "It comes from the Greek ta biblia, “the books”.",
+  "refs": [],
+  "sources": [
+   {
+    "name": "Wiktionary: Bible",
+    "url": "https://en.wiktionary.org/wiki/Bible"
+   },
+   {
+    "name": "Wikipedia: Bible",
+    "url": "https://en.wikipedia.org/wiki/Bible"
+   }
+  ],
+  "checked": false
+ },
+ {
+  "id": "king-james",
+  "cat": "history",
+  "q": "Did King James write the King James Bible?",
+  "a": "No",
+  "more": "He commissioned it. Records show 47 scholars took part, and it was published in 1611.",
+  "refs": [],
+  "sources": [
+   {
+    "name": "Britannica: Did King James I write the King James Bible?",
+    "url": "https://www.britannica.com/question/Did-King-James-I-write-the-King-James-Bible"
+   },
+   {
+    "name": "Britannica: The King James and subsequent versions",
+    "url": "https://www.britannica.com/topic/biblical-literature/The-King-James-and-subsequent-versions"
+   }
+  ],
+  "checked": false
+ },
+ {
+  "id": "gutenberg",
+  "cat": "history",
+  "q": "What was the first book printed with movable metal type in Western Europe?",
+  "a": "The Gutenberg Bible",
+  "more": "Finished about 1455 in Mainz, Germany. Around 180 copies were printed.",
+  "refs": [],
+  "sources": [
+   {
+    "name": "Library of Congress: The Gutenberg Bible",
+    "url": "https://www.loc.gov/exhibits/bibles/interactives/gutenberg/index.html"
+   },
+   {
+    "name": "Britannica: Gutenberg Bible",
+    "url": "https://www.britannica.com/topic/Gutenberg-Bible"
+   }
+  ],
+  "checked": false
+ },
+ {
+  "id": "chapter-divisions",
+  "cat": "history",
+  "q": "Who divided the Bible into chapters?",
+  "a": "Stephen Langton",
+  "more": "The chapters used today are credited to him, an archbishop of Canterbury, in the early 1200s.",
+  "refs": [],
+  "sources": [
+   {
+    "name": "Wikipedia: Stephen Langton",
+    "url": "https://en.wikipedia.org/wiki/Stephen_Langton"
+   },
+   {
+    "name": "Catholic Encyclopedia: Stephen Langton",
+    "url": "https://catholic.com/encyclopedia/stephen-langton"
+   }
+  ],
+  "checked": false
+ },
+ {
+  "id": "verse-numbers",
+  "cat": "history",
+  "q": "Which English Bible was the first to number its verses?",
+  "a": "The Geneva Bible",
+  "more": "Published in 1560. The numbering followed the printer Robert Estienne's Greek New Testament of 1551.",
+  "refs": [],
+  "sources": [
+   {
+    "name": "Britannica: Geneva Bible",
+    "url": "https://www.britannica.com/EBchecked/topic/229040/Geneva-Bible"
+   },
+   {
+    "name": "Wikipedia: Chapters and verses of the Bible",
+    "url": "https://en.wikipedia.org/wiki/Chapters_and_verses_of_the_Bible"
+   }
+  ],
+  "checked": false
+ },
+ {
+  "id": "dead-sea-scrolls",
+  "cat": "history",
+  "q": "Who found the first Dead Sea Scrolls?",
+  "a": "A shepherd boy",
+  "more": "In 1947, in a cave at Qumran by the Dead Sea. The scrolls include every book of the Hebrew Bible except Esther.",
+  "refs": [],
+  "sources": [
+   {
+    "name": "Britannica: Dead Sea Scrolls",
+    "url": "https://www.britannica.com/topic/Dead-Sea-Scrolls"
+   }
+  ],
+  "checked": false
+ },
+ {
+  "id": "vulgate",
+  "cat": "history",
+  "q": "Who translated the Bible into Latin?",
+  "a": "Jerome",
+  "more": "Pope Damasus commissioned him in 382 and he finished about 405. His version is known as the Vulgate.",
+  "refs": [],
+  "sources": [
+   {
+    "name": "Britannica: Vulgate",
+    "url": "https://www.britannica.com/topic/Vulgate"
+   }
+  ],
+  "checked": false
+ },
+ {
+  "id": "wycliffe",
+  "cat": "history",
+  "q": "When was the whole Bible first put into English?",
+  "a": "1382",
+  "more": "By John Wycliffe and his followers, in copies written out by hand.",
+  "refs": [],
+  "sources": [
+   {
+    "name": "Britannica Kids: William Tyndale",
+    "url": "https://kids.britannica.com/students/article/William-Tyndale/339029"
+   }
+  ],
+  "checked": false
+ },
+ {
+  "id": "tyndale",
+  "cat": "history",
+  "q": "When was the New Testament first printed in English?",
+  "a": "1526",
+  "more": "William Tyndale's translation, printed at Worms in Germany.",
+  "refs": [],
+  "sources": [
+   {
+    "name": "Cambridge University Library: The Bible in English",
+    "url": "https://wwwe.lib.cam.ac.uk/CUL/exhibitions/KJV/bibleinen.html"
+   },
+   {
+    "name": "Britannica Kids: William Tyndale",
+    "url": "https://kids.britannica.com/students/article/William-Tyndale/339029"
+   }
+  ],
+  "checked": false
+ },
+ {
+  "id": "best-seller",
+  "cat": "history",
+  "q": "What is the best-selling book of all time?",
+  "a": "The Bible",
+  "more": "Guinness World Records puts it at an estimated five billion copies or more.",
+  "refs": [],
+  "sources": [
+   {
+    "name": "Guinness World Records: Best-selling book",
+    "url": "https://www.guinnessworldrecords.com/world-records/best-selling-book-of-non-fiction.html"
+   }
+  ],
+  "checked": false
+ },
+ {
+  "id": "translations",
+  "cat": "history",
+  "q": "Into how many languages has the whole Bible been translated?",
+  "a": "More than 750",
+  "more": "Wycliffe Global Alliance counted 756 languages with a complete Bible in 2024.",
+  "refs": [],
+  "sources": [
+   {
+    "name": "Wycliffe Global Alliance: Global Scripture Access",
+    "url": "https://wycliffe.net/?p=2446"
+   },
+   {
+    "name": "Gospel Herald: 2024 Wycliffe report",
+    "url": "https://www.gospelherald.com/articles/72156/20241231/2024-report-wycliffe-global-alliance-shows-status-bible-accessibility-worldwide.htm"
+   }
+  ],
+  "checked": false
+ }
+]

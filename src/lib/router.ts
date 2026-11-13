@@ -29,7 +29,7 @@ const emit = () => listeners.forEach((l) => l());
 function depth(path: string): number {
   const p = path.split('?')[0];
   if (/^\/bible\/[^/]+\/\d+/.test(p)) return 1;
-  if (p.startsWith('/settings')) return 1;
+  if (p.startsWith('/settings') || p.startsWith('/welcome')) return 1;
   if (/^\/memorise\/.+/.test(p)) return 1;
   return 0;
 }

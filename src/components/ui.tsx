@@ -179,7 +179,7 @@ export function Sheet({ open, onClose, title, children, tall }: {
 // ---- bottom tab bar ----
 const TABS = [
   { to: '/', label: 'Home', icon: IconHome, match: (p: string) => p === '/' },
-  { to: '/feed', label: 'Verses', icon: IconVerses, match: (p: string) => p.startsWith('/feed') || p.startsWith('/v/') },
+  { to: '/feed', label: 'Verses', icon: IconVerses, match: (p: string) => p.startsWith('/feed') || p.startsWith('/v/') || p.startsWith('/trivia') },
   { to: '/bible', label: 'Bible', icon: IconBook, match: (p: string) => p.startsWith('/bible') },
   { to: '/saved', label: 'Saved', icon: IconBookmark, match: (p: string) => p.startsWith('/saved') },
   { to: '/memorise', label: 'Memorise', icon: IconMemory, match: (p: string) => p.startsWith('/memorise') },
@@ -208,6 +208,20 @@ export function TabBar({ overlay }: { overlay?: boolean }) {
       })}
       </div>
     </nav>
+  );
+}
+
+/** Switches between the two decks of cards. They are never mixed. */
+export function ModeSwitch({ mode }: { mode: 'verses' | 'trivia' }) {
+  return (
+    <div className="mode-switch" role="tablist" aria-label="Cards to show" data-nogesture>
+      {(['verses', 'trivia'] as const).map((m) => (
+        <button key={m} role="tab" aria-selected={mode === m} className={mode === m ? 'on' : ''} onClick={() => navigate(m === 'verses' ? '/feed' : '/trivia')}>
+          {mode === m && <i className="mode-thumb" aria-hidden />}
+          <span>{m === 'verses' ? 'Verses' : 'Trivia'}</span>
+        </button>
+      ))}
+    </div>
   );
 }
 
