@@ -291,7 +291,18 @@ const VerseCard = memo(function VerseCard({ card, topicId, active, hero, bibleRe
       onPointerMove={onPointerMove}
       onPointerUp={(e) => finish(e, false)}
       onPointerCancel={(e) => finish(e, true)}
-      onContextMenu={(e) => { e.preventDefault(); if (!g.current.long) handlers.onMore(shown, card.key, topicId); }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        const s = g.current;
+        if (s.long) return;
+        // The phone's own long-press can arrive before our timer. End the gesture here,
+        // or lifting the finger would be read as a tap and hide the buttons behind the menu.
+        window.clearTimeout(s.timer);
+        window.clearTimeout(s.tapTimer);
+        s.long = true;
+        s.down = false;
+        handlers.onMore(shown, card.key, topicId);
+      }}
     >
       <SceneView scene={scene} live={active} hero={hero} />
       {shine > 0 && <i className="shine" key={shine} aria-hidden />}
@@ -428,9 +439,10 @@ export function Feed({ mode, first }: { mode: 'topics' | 'saved'; first?: Ref })
   const topicOf = useCallback((c: Card) => (mode === 'saved' ? c.topics[0] : displayTopic(c, topics)), [mode, topics]);
 
   const handlers: CardHandlers = useMemo(() => ({
-    onNote: (v) => setNoteFor(v),
-    onShare: (v, scene) => setShareFor({ verse: v, scene }),
-    onMore: (v, originKey, topicId) => setMoreFor({ verse: v, originKey, topicId }),
+    // opening anything brings the buttons back, so nothing is left hidden behind a sheet
+    onNote: (v) => { setClean(false); setNoteFor(v); },
+    onShare: (v, scene) => { setClean(false); setShareFor({ verse: v, scene }); },
+    onMore: (v, originKey, topicId) => { setClean(false); setMoreFor({ verse: v, originKey, topicId }); },
     onTap: () => setClean((v) => !v),
   }), []);
 
