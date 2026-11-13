@@ -8,9 +8,11 @@ import { AREAS, MOODS, NEEDS, type Choice } from '../lib/journey';
 import { navigate } from '../lib/router';
 import { hash, pickPictorial } from '../lib/scenes';
 import { dayNumber, getState, save, toggleMemorise, touchStreak, update } from '../lib/store';
+import { CrossScene } from '../components/CrossScene';
 import { AREA_ART, MOOD_ART, NEED_ART } from '../components/Glyphs';
 import { IconBack, IconFlame, IconForward, IconMemory, IconRefresh, Logo } from '../components/Icons';
 import { openInstall } from '../components/InstallPrompt';
+import { CentreWords } from '../components/Opening';
 import { SceneView } from '../components/Scene';
 import { Scripture } from '../components/Scripture';
 import { buzz, HAPTIC } from '../components/ui';
@@ -120,18 +122,16 @@ export function Welcome() {
   const streak = getState().streak.count || 1;
   return (
     <div className={'welcome stage-' + stage}>
-      <SceneView scene={scene} live />
-      <div className="welcome-shade" />
+      {stage === 'hello' ? <CrossScene variant="tall" live /> : <><SceneView scene={scene} live /><div className="welcome-shade" /></>}
 
       {stage === 'hello' && (
         <div className="welcome-body intro">
-          <Logo size={64} />
-          <h1>Chestnut</h1>
-          <p className="lead">A verse for what's on your mind.</p>
+          <p className="intro-brand"><Logo size={22} /> Chestnut</p>
+          <button className="intro-skip" onClick={finish}>Skip</button>
+          <CentreWords />
           <button className="btn light wide big" onClick={() => setStage('mood')}>Begin <IconForward size={18} /></button>
-          <button className="link" onClick={finish}>Skip</button>
           {ios && !standalone && (
-            <button className="welcome-install" onClick={openInstall}>On iPhone? Add to your home screen first <IconForward size={14} /></button>
+            <button className="welcome-install" onClick={openInstall}>Add to your home screen first <IconForward size={14} /></button>
           )}
         </div>
       )}

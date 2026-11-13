@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { TOPICS, topicLabel } from '../data/topics';
 import { formatRef, versePath } from '../lib/books';
+import { centreVerse } from '../lib/centre';
 import { countForTopic, countForTopics, verseOfTheDay } from '../lib/feed';
 import { journeyState, STEPS } from '../lib/journey';
 import { isDue, MEMORISED_BOX } from '../lib/memory';
@@ -8,6 +9,7 @@ import { navigate } from '../lib/router';
 import { moodColor, pickPictorial, sceneUrl } from '../lib/scenes';
 import { APP_NAME } from '../lib/share';
 import { update, useStore } from '../lib/store';
+import { CrossScene } from '../components/CrossScene';
 import { STEP_ART } from '../components/Glyphs';
 import { IconCheck, IconFlame, IconForward, IconMemory, IconSettings, IconSprout, IconStar, Logo } from '../components/Icons';
 import { Scripture } from '../components/Scripture';
@@ -52,6 +54,21 @@ function Path() {
   );
 }
 
+/** The centrepiece: the cross, the name, and the day's verse about them. Opens that verse. */
+function Centre() {
+  const v = centreVerse();
+  return (
+    <button className="centre" onClick={() => navigate(versePath(v))} aria-label={`Jesus. ${v.text} ${formatRef(v)}. Open this verse`}>
+      <CrossScene variant="wide" live />
+      <span className="centre-sky"><strong className="centre-name">Jesus</strong></span>
+      <span className="centre-foot">
+        <span className="centre-verse"><Scripture text={v.text} /></span>
+        <span className="centre-ref">{formatRef(v)}</span>
+      </span>
+    </button>
+  );
+}
+
 export function Home() {
   const name = useStore((s) => s.name);
   const streak = useStore((s) => s.streak);
@@ -88,6 +105,8 @@ export function Home() {
           <div className="brand"><Logo size={30} /><span>{APP_NAME}</span></div>
           <span className="row"><SoundButton plain /><button className="icon-btn" aria-label="Settings" onClick={() => navigate('/settings')}><IconSettings size={22} /></button></span>
         </header>
+
+        <Centre />
 
         <h1 className="hello">{greeting(name)}</h1>
 

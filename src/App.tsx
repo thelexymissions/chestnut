@@ -1,4 +1,4 @@
-import { useEffect, useMemo, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { bookBySlug } from './lib/books';
 import { loadBible } from './lib/bible';
 import { useRoute } from './lib/router';
@@ -6,6 +6,7 @@ import { grainUrl } from './lib/scenes';
 import { getState, touchStreak, update, useStore } from './lib/store';
 import { initSound } from './lib/sound';
 import { InstallHost } from './components/InstallPrompt';
+import { Opening, OPENING_MS, openingDue } from './components/Opening';
 import { SoundHost } from './components/Sound';
 import { celebrate, CelebrationHost, ToastHost } from './components/ui';
 import { Bible } from './screens/Bible';
@@ -26,6 +27,9 @@ export function App() {
   const textSize = useStore((s) => s.textSize);
 
   const grain = useMemo(() => grainUrl(), []);
+  // Shown once each time the app is opened. A newcomer meets the cross on the welcome
+  // screen instead, so someone following a shared link still reaches their verse at once.
+  const [opening] = useState(() => getState().onboarded && !window.location.hash.startsWith('#/welcome') && openingDue());
 
   useEffect(() => {
     initSound();
@@ -34,7 +38,7 @@ export function App() {
     const { streak, milestones } = getState();
     if ([3, 7, 30, 100, 365].includes(streak.count) && !milestones.includes(streak.count)) {
       update((s) => ({ milestones: [...s.milestones, streak.count] }));
-      window.setTimeout(() => celebrate(`${streak.count} days in a row`, 'A little each day.'), 900);
+      window.setTimeout(() => celebrate(`${streak.count} days in a row`, 'A little each day.'), opening ? OPENING_MS + 300 : 900);
     }
     // fetch the Bible in the background so the reader and search open instantly, also offline
     const t = window.setTimeout(() => { loadBible().catch(() => undefined); }, 2500);
@@ -83,6 +87,7 @@ export function App() {
       <InstallHost />
       <ToastHost />
       <CelebrationHost />
+      {opening && <Opening />}
     </div>
   );
 }

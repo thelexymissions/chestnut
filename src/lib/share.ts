@@ -178,11 +178,22 @@ export async function renderShareImage(s: Shareable, scene: Scene, format: Image
   if ('letterSpacing' in spaced) spaced.letterSpacing = '5px';
   ctx.fillText(`${formatRef(s).toUpperCase()}  ·  KJV`, W / 2, y);
 
-  // wordmark
+  // a small cross, then the wordmark
+  const foot = H - (format === 'story' ? 150 : 64);
+  ctx.save();
+  ctx.shadowBlur = light ? 10 : 0;
+  ctx.strokeStyle = soft;
+  ctx.lineWidth = 4;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(W / 2, foot - 96); ctx.lineTo(W / 2, foot - 50);
+  ctx.moveTo(W / 2 - 14, foot - 82); ctx.lineTo(W / 2 + 14, foot - 82);
+  ctx.stroke();
+  ctx.restore();
   ctx.fillStyle = soft;
   ctx.font = `600 30px ${SERIF}`;
   if ('letterSpacing' in spaced) spaced.letterSpacing = '8px';
-  ctx.fillText(APP_NAME.toUpperCase(), W / 2, H - (format === 'story' ? 150 : 64));
+  ctx.fillText(APP_NAME.toUpperCase(), W / 2, foot);
   if ('letterSpacing' in spaced) spaced.letterSpacing = '0px';
   return canvas;
 }
