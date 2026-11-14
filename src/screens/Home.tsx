@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { TOPICS, topicLabel } from '../data/topics';
 import { formatRef, versePath } from '../lib/books';
-import { centreVerse } from '../lib/centre';
+import { homePassage } from '../lib/centre';
 import { countForTopic, countForTopics, verseOfTheDay } from '../lib/feed';
 import { journeyState, STEPS } from '../lib/journey';
 import { isDue, MEMORISED_BOX } from '../lib/memory';
@@ -54,16 +54,16 @@ function Path() {
   );
 }
 
-/** The centrepiece: the cross, the name, and the day's verse about them. Opens that verse. */
+/** The centrepiece: the cross, the name, and the passage beneath them. Opens the passage at its first verse. */
 function Centre() {
-  const v = centreVerse();
+  const p = homePassage;
   return (
-    <button className="centre" onClick={() => navigate(versePath(v))} aria-label={`Jesus. ${v.text} ${formatRef(v)}. Open this verse`}>
+    <button className="centre" onClick={() => navigate(versePath(p))} aria-label={`Jesus. ${p.text} ${p.ref}. Open this passage`}>
       <CrossScene variant="wide" live />
       <span className="centre-sky"><strong className="centre-name">Jesus</strong></span>
       <span className="centre-foot">
-        <span className="centre-verse"><Scripture text={v.text} /></span>
-        <span className="centre-ref">{formatRef(v)}</span>
+        <span className="centre-verse">{p.parts.map((part, i) => <span className="centre-part" key={i}><Scripture text={part} />{' '}</span>)}</span>
+        <span className="centre-ref">{p.ref}</span>
       </span>
     </button>
   );

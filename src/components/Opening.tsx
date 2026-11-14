@@ -6,8 +6,8 @@ import { Scripture } from './Scripture';
 // The opening moment: each time the app is opened, the cross and the name of
 // Jesus are shown for a few seconds before the app itself. A tap moves on.
 
-/** How long the opening moment stays, fade included. */
-export const OPENING_MS = 5200;
+/** How long the opening moment stays, fade included: a little longer for a longer passage. */
+export const OPENING_MS = Math.min(6000, Math.max(3600, 2200 + openingPassage.text.split(/\s+/).length * 90));
 
 /** The name and the opening passage, set over the sky above the cross. */
 export function CentreWords() {

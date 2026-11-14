@@ -1084,7 +1084,8 @@ html[data-nav='pop']::view-transition-new(root) { animation: 0.3s ease both vt-f
 .centre-sky { position: relative; display: block; aspect-ratio: 1000 / 705; padding-top: 5.5%; }
 .centre-sky .centre-name { font-size: clamp(2.6rem, 13cqw, 3.5rem); }
 .centre-foot { position: relative; display: flex; flex-direction: column; align-items: center; gap: 9px; padding: 8px 22px 20px; text-shadow: 0 1px 10px rgba(15, 9, 6, 0.85); }
-.centre-foot .centre-verse { font-size: 1.14rem; line-height: 1.22; color: rgba(255, 250, 240, 0.95); }
+.centre-foot .centre-verse { font-size: 1.06rem; line-height: 1.22; color: rgba(255, 250, 240, 0.95); }
+@container (max-width: 300px) { .centre-foot .centre-verse { font-size: 0.97rem; } }
 
 /* the narrowest phones: two topics still sit side by side */
 @media (max-width: 350px) {

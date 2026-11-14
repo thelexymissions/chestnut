@@ -1,23 +1,15 @@
-import verses from '../data/centre.json';
-import opening from '../data/opening.json';
-import { formatRef, keyOf, type Ref, type VerseKey } from './books';
-import { dayNumber } from './store';
+import cross from '../data/cross.json';
+import { formatRef, type Ref } from './books';
 
-// The words shown with the cross and the name Jesus. All of them are copied from
-// the verified Bible text by scripts/build-centre.mjs.
-//  - openingPassage: always the same, on the opening moment and the welcome screen.
-//  - centreVerse: on the Home card, about the cross or His name; one a day, the same for everyone.
+// The words shown with the cross and the name Jesus. They are copied from the verified
+// Bible text by scripts/build-centre.mjs, from the references in data/cross-verses.json.
 
 /** A verse, or a run of verses in one chapter, with its reference written out ("Romans 8:1–2"). */
 export interface Passage extends Ref { to: number; parts: string[]; text: string; ref: string }
 
-export const openingPassage: Passage = {
-  ...opening,
-  ref: opening.to > opening.v ? `${formatRef(opening)}\u2013${opening.to}` : formatRef(opening),
-};
+const named = (p: Omit<Passage, 'ref'>): Passage => ({ ...p, ref: p.to > p.v ? `${formatRef(p)}–${p.to}` : formatRef(p) });
 
-export interface CentreVerse extends Ref { key: VerseKey; text: string }
-
-const LIST: CentreVerse[] = (verses as (Ref & { text: string })[]).map((v) => ({ ...v, key: keyOf(v) }));
-
-export const centreVerse = (day = dayNumber()): CentreVerse => LIST[((day % LIST.length) + LIST.length) % LIST.length];
+/** On the opening moment and the welcome screen. */
+export const openingPassage: Passage = named(cross.opening);
+/** On the card at the top of Home. */
+export const homePassage: Passage = named(cross.home);
