@@ -1,10 +1,20 @@
 import verses from '../data/centre.json';
-import { keyOf, type Ref, type VerseKey } from './books';
+import opening from '../data/opening.json';
+import { formatRef, keyOf, type Ref, type VerseKey } from './books';
 import { dayNumber } from './store';
 
-// The verses shown with the cross and the name Jesus: about the cross, and
-// about His name. One a day, the same for everyone. The words are copied from
+// The words shown with the cross and the name Jesus. All of them are copied from
 // the verified Bible text by scripts/build-centre.mjs.
+//  - openingPassage: always the same, on the opening moment and the welcome screen.
+//  - centreVerse: on the Home card, about the cross or His name; one a day, the same for everyone.
+
+/** A verse, or a run of verses in one chapter, with its reference written out ("Romans 8:1–2"). */
+export interface Passage extends Ref { to: number; parts: string[]; text: string; ref: string }
+
+export const openingPassage: Passage = {
+  ...opening,
+  ref: opening.to > opening.v ? `${formatRef(opening)}\u2013${opening.to}` : formatRef(opening),
+};
 
 export interface CentreVerse extends Ref { key: VerseKey; text: string }
 

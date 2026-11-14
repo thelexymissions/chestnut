@@ -1,6 +1,8 @@
-// Builds the verses shown with the cross and the name Jesus (src/data/centre.json)
-// from the references in data/centre-verses.json. As everywhere else, the words
-// come only from the verified Bible text; a reference that does not exist stops the build.
+// Builds the words shown with the cross and the name Jesus. As everywhere else, the
+// words come only from the verified Bible text; a reference that does not exist stops the build.
+//  - data/opening-verse.json: the passage on the opening moment and the welcome screen,
+//    one verse ("John 3:16") or a run of verses in one chapter ("Romans 8:1-2") -> src/data/opening.json
+//  - data/centre-verses.json: the verses on the Home card, one a day -> src/data/centre.json
 //
 // Usage: node scripts/build-centre.mjs
 import fs from 'node:fs';
@@ -25,7 +27,29 @@ for (const r of refs) {
   out.push({ b: b + 1, c: Number(m[2]), v: Number(m[3]), text: raw.replace(/^¶/, '').replace(/[\[\]]/g, '') });
 }
 if (!out.length) errors.push('no verses listed');
+
+// the opening passage: every verse of the run must exist, and they are joined in order with a space
+const openingRef = JSON.parse(fs.readFileSync(path.join(root, 'data/opening-verse.json'), 'utf8'));
+const om = String(openingRef).match(/^(.*) (\d+):(\d+)(?:-(\d+))?$/);
+const ob = om ? NAMES.indexOf(om[1]) : -1;
+let opening;
+if (!om || ob < 0) errors.push(`opening: "${openingRef}" is not a reference`);
+else {
+  const c = Number(om[2]), v = Number(om[3]), to = Number(om[4] ?? om[3]);
+  const parts = [];
+  for (let n = v; n <= to; n++) {
+    const raw = books[ob]?.[c - 1]?.[n - 1];
+    if (raw === undefined) errors.push(`opening: ${om[1]} ${c}:${n} is not in the Bible`);
+    else parts.push(raw.replace(/^¶/, '').replace(/[\[\]]/g, '').trim());
+  }
+  if (to < v) errors.push(`opening: "${openingRef}" runs backwards`);
+  // `parts` keeps the verses apart so each can be set as its own lines; `text` is the passage read straight through
+  opening = { b: ob + 1, c, v, to, parts, text: parts.join(' ') };
+}
+
 if (errors.length) { console.error(errors.map((e) => 'FAIL: ' + e).join('\n')); process.exit(1); }
 fs.writeFileSync(path.join(root, 'src/data/centre.json'), JSON.stringify(out, null, 1));
-console.log(`centre verses: ${out.length}`);
+fs.writeFileSync(path.join(root, 'src/data/opening.json'), JSON.stringify(opening, null, 1));
+console.log(`centre verses: ${out.length}; opening: ${openingRef} (${opening.text.split(/\s+/).length} words)`);
+if (process.argv.includes('--show')) console.log(`${openingRef}: ${opening.text}`);
 if (process.argv.includes('--show')) for (const [i, v] of out.entries()) console.log(`${refs[i]} (${v.text.split(/\s+/).length} words): ${v.text}`);

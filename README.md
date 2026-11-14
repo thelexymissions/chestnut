@@ -2,7 +2,7 @@
 
 A verse for what's on your mind. Chestnut is an installable web app for reading, saving and sharing Bible verses:
 
-- **The cross and the name of Jesus**: a plain wooden cross on a hill at sunrise, with the name and one verse about them that changes each day. It opens the app, sits at the top of Home, greets a new person on the welcome screen, and a small cross sits above the name on shared pictures.
+- **The cross and the name of Jesus**: a plain wooden cross on a hill at sunrise, with the name and Scripture beneath it. It opens the app and greets a new person on the welcome screen with Romans 8:1–2; at the top of Home it carries one verse about the cross or His name that changes each day; and a small cross sits above the name on shared pictures.
 - **Verse feed**: full-screen cards, one verse each, grouped by topic. Swipe up for the next card; swipe left or right, or use the bar at the foot of the card, for the verse after or before it.
 - **Bible**: the whole King James Version, browsable by book and chapter, searchable by reference or by words.
 - **Saved and notes**: private to each person, stored on their own device.
@@ -44,7 +44,12 @@ To add a card, add an entry with either a new check in that script or a source. 
 
 ### The cross and the name
 
-`data/centre-verses.json` lists the verses shown with the cross, as references only. `scripts/build-centre.mjs` (run by `npm run build`) copies their words from `kjv.json` into `src/data/centre.json` and stops the build on a reference that does not exist or appears twice. One is shown per day, in list order. The drawing is `src/components/CrossScene.tsx`; the opening moment is `src/components/Opening.tsx` and is not replayed if the page is reloaded within five minutes.
+Two small files hold references only; `scripts/build-centre.mjs` (run by `npm run build`) copies the words from `kjv.json` and stops the build on a reference that does not exist.
+
+- `data/opening-verse.json`: the passage on the opening moment and the welcome screen, a verse or a run of verses in one chapter (now `"Romans 8:1-2"`). Written to `src/data/opening.json`.
+- `data/centre-verses.json`: the verses on the Home card, one per day in list order. Written to `src/data/centre.json`.
+
+The drawing is `src/components/CrossScene.tsx`; the opening moment is `src/components/Opening.tsx` and is not replayed if the page is reloaded within five minutes.
 
 ### Change the feed
 
