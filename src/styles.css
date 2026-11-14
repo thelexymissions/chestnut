@@ -95,6 +95,9 @@ a { color: inherit; }
   background: var(--bg);
   color: var(--ink);
 }
+/* On a phone the page behind the app takes the app's own colour, so that if a browser leaves a strip
+   below the app (under its own floating toolbar, say) it reads as part of the app, not as a black band. */
+@media (max-width: 559px) { html, body { background: var(--bg); } }
 @media (min-width: 560px) {
   .app { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 30px 80px rgba(0, 0, 0, 0.6); }
 }

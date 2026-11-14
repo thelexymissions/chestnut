@@ -1,3 +1,4 @@
+import { measureScreen } from '../lib/screen';
 import { useEffect, useRef, useState } from 'react';
 import verification from '../../data/kjv-verification.json';
 import photos from '../data/photos.json';
@@ -11,6 +12,22 @@ import { IconBack } from '../components/Icons';
 import { InstallSteps } from '../components/InstallPrompt';
 import { openSound } from '../components/Sound';
 import { Segmented, toast } from '../components/ui';
+
+/** The sizes this phone reports, shown small at the foot of the page: useful when a layout looks wrong on one device. */
+function screenFacts(): string {
+  const m = measureScreen();
+  const app = document.querySelector('.app')?.getBoundingClientRect();
+  const cs = getComputedStyle(document.documentElement);
+  const px = (name: string) => { const d = document.createElement('div'); d.style.cssText = `position:fixed;height:${cs.getPropertyValue(name) || '0px'};visibility:hidden`; document.body.appendChild(d); const h = d.getBoundingClientRect().height; d.remove(); return Math.round(h); };
+  return `Screen ${screen.width}\u00d7${screen.height} · window ${Math.round(m.inner)} · dvh ${Math.round(m.dvh)} · app ${app ? Math.round(app.height) : '?'} · app ends ${app ? Math.round(app.bottom) : '?'} · safe ${px('--safe-t')}/${px('--safe-b')} · ${m.standalone ? 'home-screen app' : 'browser'}`;
+}
+
+function ScreenFacts() {
+  const [facts, setFacts] = useState('');
+  // measured once the page is on screen, so the app's own size is included
+  useEffect(() => { const t = window.setTimeout(() => setFacts(screenFacts()), 600); return () => window.clearTimeout(t); }, []);
+  return <p className="hint" data-screen-facts>{facts}</p>;
+}
 
 export function Settings() {
   const name = useStore((s) => s.name);
@@ -119,6 +136,7 @@ export function Settings() {
           <p>Trivia cards about the Bible's text are recomputed from this text when the app is built; cards about its history name their sources.</p>
           <p>Memorise exercises are marked by exact match with this text. The wrong choices offered are real Bible words and references picked by fixed rules; nothing is generated.</p>
           {credits.length > 0 && <p className="hint">Photographs from Unsplash by {credits.join(', ')}.</p>}
+          <ScreenFacts />
         </section>
 
         <section className="group">
