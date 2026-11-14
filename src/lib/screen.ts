@@ -22,8 +22,10 @@ export function measureScreen() {
 function fitScreen() {
   const m = measureScreen();
   const root = document.documentElement;
-  if (m.want - m.dvh > 1) root.style.setProperty('--app-h', `${m.want}px`);
+  const tall = m.want - m.dvh > 1;
+  if (tall) root.style.setProperty('--app-h', `${m.want}px`);
   else root.style.removeProperty('--app-h');
+  root.classList.toggle('tall', tall);
 }
 /** Keeps the app's height right from the first moment and whenever the window changes. */
 export function watchScreen() {

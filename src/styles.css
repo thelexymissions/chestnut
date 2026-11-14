@@ -66,6 +66,9 @@
 html, body, #root { height: var(--app-h, 100%); }
 /* every screen scrolls inside the app; the page itself never does */
 html, body { overflow: hidden; }
+/* Where the app has had to be made taller than the window the phone reports (see lib/screen.ts), the page must
+   not be clipped to that window: clipping there cut off the foot of the tab bar on every other frame. */
+html.tall, html.tall body { overflow: visible; }
 body {
   margin: 0;
   background: #0f0a07;
