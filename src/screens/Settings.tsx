@@ -17,10 +17,8 @@ import { Segmented, toast } from '../components/ui';
 function screenFacts(): string {
   const m = measureScreen();
   const app = document.querySelector('.app')?.getBoundingClientRect();
-  const cs = getComputedStyle(document.documentElement);
-  const unit = (h: string) => { const d = document.createElement('div'); d.style.cssText = `position:fixed;height:${h};visibility:hidden`; document.body.appendChild(d); const v = d.getBoundingClientRect().height; d.remove(); return Math.round(v); };
-  const px = (name: string) => { const d = document.createElement('div'); d.style.cssText = `position:fixed;height:${cs.getPropertyValue(name) || '0px'};visibility:hidden`; document.body.appendChild(d); const h = d.getBoundingClientRect().height; d.remove(); return Math.round(h); };
-  return `Screen ${screen.width}\u00d7${screen.height} · window ${Math.round(m.inner)} · dvh ${Math.round(m.dvh)} · lvh ${unit('100lvh')} · vh ${unit('100vh')} · app ${app ? Math.round(app.height) : '?'} · app ends ${app ? Math.round(app.bottom) : '?'} · safe ${px('--safe-t')}/${px('--safe-b')} · ${m.standalone ? 'home-screen app' : 'browser'}`;
+  const r = Math.round;
+  return `Screen ${screen.width}\u00d7${screen.height} · window ${r(m.inner)} · dvh ${r(m.dvh)} · lvh ${r(m.lvh)} · app ${app ? r(app.height) : '?'} · app ends ${app ? r(app.bottom) : '?'} · safe ${r(m.safeTop)}/${r(m.safeBottom)} · ${m.standalone ? 'home-screen app' : 'browser'}`;
 }
 
 function ScreenFacts() {

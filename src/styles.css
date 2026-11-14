@@ -63,12 +63,9 @@
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body, #root { height: var(--app-h, 100%); }
+html, body, #root { height: 100%; }
 /* every screen scrolls inside the app; the page itself never does */
 html, body { overflow: hidden; }
-/* Where the app has had to be made taller than the window the phone reports (see lib/screen.ts), the page must
-   not be clipped to that window: clipping there cut off the foot of the tab bar on every other frame. */
-html.tall, html.tall body { overflow: visible; }
 body {
   margin: 0;
   background: #0f0a07;
@@ -91,7 +88,7 @@ a { color: inherit; }
 
 .app {
   position: relative;
-  height: var(--app-h, 100dvh);
+  height: 100dvh;
   max-width: 520px;
   margin: 0 auto;
   overflow: hidden;
@@ -1118,6 +1115,11 @@ html[data-nav='pop']::view-transition-new(root) { animation: 0.3s ease both vt-f
   background: rgba(20, 12, 8, 0.45); color: #fff; font-size: 0.72rem; font-weight: 600; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.24);
 }
 .saved-home.on { background: var(--brand); box-shadow: none; }
+
+/* the note for a home-screen copy added before the status bar was made solid */
+.refit { display: flex; flex-direction: column; gap: 8px; margin: 2px 0 12px; padding: 14px 16px; border-radius: 20px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); font-size: 0.9rem; color: var(--ink-2); }
+.refit strong { font-size: 1rem; color: var(--ink); }
+.refit ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 2px; }
 
 /* the narrowest phones: two topics still sit side by side */
 @media (max-width: 350px) {

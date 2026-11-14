@@ -50,6 +50,8 @@ export interface AppState {
   install: { later: number; times: number; never: boolean };
   /** the saved verse chosen for the card at the top of Home; null shows the app's own passage */
   homeVerse: VerseKey | null;
+  /** the note on Home about adding an older home-screen copy again has been put aside */
+  refitSeen: boolean;
 }
 
 const KEY = 'chestnut.state.v1';
@@ -80,6 +82,7 @@ const defaults = (): AppState => ({
   sound: { music: false, rain: false, forest: false, waves: false, volume: 0.6 },
   install: { later: 0, times: 0, never: false },
   homeVerse: null,
+  refitSeen: false,
 });
 
 function read(): AppState {

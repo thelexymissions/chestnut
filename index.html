@@ -7,7 +7,9 @@
     <meta name="description" content="Chestnut: a verse for what's on your mind. Scroll Bible verses by topic, save them, add your own notes and share them." />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- solid, not "black-translucent": on iOS 26 a see-through status bar makes the home-screen app stop short
+         of the bottom of the screen (WebKit bug 301108), and nothing drawn below that line is reliably shown -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <meta name="apple-mobile-web-app-title" content="Chestnut" />
     <meta property="og:title" content="Chestnut" />
     <meta property="og:description" content="A verse for what's on your mind." />

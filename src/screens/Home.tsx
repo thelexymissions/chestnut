@@ -7,10 +7,12 @@ import { homePassage } from '../lib/centre';
 import { cardByKey, countForTopic, countForTopics, verseOfTheDay } from '../lib/feed';
 import { journeyState, STEPS } from '../lib/journey';
 import { isDue, MEMORISED_BOX } from '../lib/memory';
+import { staleInstall } from '../lib/screen';
+import { downloadBlob } from '../lib/share';
 import { navigate } from '../lib/router';
 import { moodColor, pickPictorial, sceneUrl } from '../lib/scenes';
 import { APP_NAME } from '../lib/share';
-import { update, useStore } from '../lib/store';
+import { exportBackup, localDay, update, useStore } from '../lib/store';
 import { CrossScene } from '../components/CrossScene';
 import { STEP_ART } from '../components/Glyphs';
 import { IconCheck, IconEdit, IconFlame, IconForward, IconMemory, IconSettings, IconSprout, IconStar, Logo } from '../components/Icons';
@@ -132,6 +134,34 @@ function Centre() {
   );
 }
 
+/**
+ * Shown only in a home-screen copy added before the status bar was made solid, which stops short of the bottom
+ * of the screen on iOS 26. Adding it again fixes that; a home-screen app's data goes with it, so a backup comes first.
+ */
+function Refit() {
+  const seen = useStore((s) => s.refitSeen);
+  const [stale] = useState(() => staleInstall());
+  if (seen || !stale) return null;
+  const backup = () => {
+    downloadBlob(new Blob([exportBackup()], { type: 'application/json' }), `chestnut-backup-${localDay()}.json`);
+    toast('Backup saved to your downloads');
+  };
+  return (
+    <section className="refit" aria-label="Make Chestnut fill your screen">
+      <strong>Make Chestnut fill your screen</strong>
+      <ol>
+        <li>Save a backup</li>
+        <li>Remove Chestnut from your Home Screen</li>
+        <li>Add it again from Safari, then restore the backup in Settings</li>
+      </ol>
+      <span className="row gap">
+        <button className="btn small" onClick={backup}>Save a backup</button>
+        <button className="link" onClick={() => update(() => ({ refitSeen: true }))}>Not now</button>
+      </span>
+    </section>
+  );
+}
+
 export function Home() {
   const name = useStore((s) => s.name);
   const streak = useStore((s) => s.streak);
@@ -169,6 +199,7 @@ export function Home() {
           <span className="row"><SoundButton plain /><button className="icon-btn" aria-label="Settings" onClick={() => navigate('/settings')}><IconSettings size={22} /></button></span>
         </header>
 
+        <Refit />
         <Centre />
 
         <h1 className="hello">{greeting(name)}</h1>
