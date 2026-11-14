@@ -740,7 +740,7 @@ mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 2
 .saved-list { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 20px; }
 .saved-card {
   position: relative; display: flex; flex-direction: column; gap: 10px; justify-content: flex-end; width: 100%; min-height: 150px;
-  padding: 18px; border-radius: 22px; overflow: hidden; text-align: left; color: #fff; box-shadow: var(--shadow);
+  padding: 48px 18px 18px; border-radius: 22px; overflow: hidden; text-align: left; color: #fff; box-shadow: var(--shadow);
   transition: transform 0.4s var(--spring);
 }
 .saved-card:active { transform: scale(0.98); }
@@ -1086,6 +1086,30 @@ html[data-nav='pop']::view-transition-new(root) { animation: 0.3s ease both vt-f
 .centre-foot { position: relative; display: flex; flex-direction: column; align-items: center; gap: 9px; padding: 8px 22px 20px; text-shadow: 0 1px 10px rgba(15, 9, 6, 0.85); }
 .centre-foot .centre-verse { font-size: 1.06rem; line-height: 1.22; color: rgba(255, 250, 240, 0.95); }
 @container (max-width: 300px) { .centre-foot .centre-verse { font-size: 0.97rem; } }
+
+/* choosing the saved verse that stands on Home */
+.centre-wrap { position: relative; }
+.centre-change {
+  position: absolute; top: 12px; right: 12px; display: inline-flex; align-items: center; gap: 5px; min-height: 32px; padding: 0 11px; border-radius: 999px;
+  background: rgba(20, 12, 30, 0.42); color: #fff; font-size: 0.74rem; font-weight: 600; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+}
+.centre-change:active { background: rgba(20, 12, 30, 0.6); }
+.centre-foot .centre-verse.long { font-size: 0.95rem; }
+.pick-list { list-style: none; margin: 0; padding: 0; }
+.pick { display: flex; align-items: flex-start; gap: 12px; width: 100%; padding: 13px 2px; text-align: left; border-bottom: 1px solid var(--line); color: var(--ink); }
+.pick-list li:last-child .pick { border-bottom: 0; }
+.pick-mark { flex: none; width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; display: grid; place-items: center; color: #fff; box-shadow: inset 0 0 0 2px var(--line); }
+.pick.on .pick-mark { background: var(--brand); box-shadow: none; }
+.pick-body { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.pick-body strong { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+.pick-body > span { font-family: var(--serif); font-size: 1.08rem; line-height: 1.22; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.pick-empty { padding: 8px 0 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 14px; color: var(--ink-2); }
+.saved-item { position: relative; }
+.saved-home {
+  position: absolute; top: 10px; right: 10px; z-index: 1; display: inline-flex; align-items: center; gap: 5px; min-height: 30px; padding: 0 10px; border-radius: 999px;
+  background: rgba(20, 12, 8, 0.45); color: #fff; font-size: 0.72rem; font-weight: 600; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.24);
+}
+.saved-home.on { background: var(--brand); box-shadow: none; }
 
 /* the narrowest phones: two topics still sit side by side */
 @media (max-width: 350px) {

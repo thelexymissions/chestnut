@@ -48,6 +48,8 @@ export interface AppState {
   sound: { music: boolean; rain: boolean; forest: boolean; waves: boolean; volume: number };
   /** the add-to-home-screen prompt: when it was last put aside, and how often */
   install: { later: number; times: number; never: boolean };
+  /** the saved verse chosen for the card at the top of Home; null shows the app's own passage */
+  homeVerse: VerseKey | null;
 }
 
 const KEY = 'chestnut.state.v1';
@@ -77,6 +79,7 @@ const defaults = (): AppState => ({
   reflect: true,
   sound: { music: false, rain: false, forest: false, waves: false, volume: 0.6 },
   install: { later: 0, times: 0, never: false },
+  homeVerse: null,
 });
 
 function read(): AppState {

@@ -5,8 +5,8 @@ import { formatRef, refOf, versePath, type VerseKey } from '../lib/books';
 import { cardByKey, type Card } from '../lib/feed';
 import { navigate } from '../lib/router';
 import { pickScene, sceneById, sceneUrl, type Scene } from '../lib/scenes';
-import { toggleMemorise, toggleSaved, useStore } from '../lib/store';
-import { IconBookmark, IconCheck, IconMemory, IconNote, IconPlay, IconShare } from '../components/Icons';
+import { toggleMemorise, toggleSaved, update, useStore } from '../lib/store';
+import { IconBookmark, IconCheck, IconHome, IconMemory, IconNote, IconPlay, IconShare } from '../components/Icons';
 import { Scripture } from '../components/Scripture';
 import { NoteComposer, NotesList, ShareSheet, type VerseLike } from '../components/VerseSheets';
 import { buzz, HAPTIC, Segmented, TabBar, toast } from '../components/ui';
@@ -20,6 +20,7 @@ function Item({ card, onShare }: { card: Card; onShare: (c: Card, s: Scene) => v
   const count = useStore((s) => s.notes[card.key]?.length ?? 0);
   const override = useStore((s) => s.bg[card.key]);
   const memorising = useStore((s) => s.memory[card.key] !== undefined);
+  const onHome = useStore((s) => s.homeVerse === card.key);
   const [writing, setWriting] = useState(false);
   const scene = sceneOf(card, override);
   return (
@@ -29,6 +30,13 @@ function Item({ card, onShare }: { card: Card; onShare: (c: Card, s: Scene) => v
         <span className="saved-text"><Scripture text={card.text} /></span>
         <span className="saved-ref">{formatRef(card)}{card.topics.length ? ` · ${card.topics.slice(0, 2).map(topicLabel).join(', ')}` : ''}</span>
       </button>
+      {/* one saved verse can stand on the Home screen, under the cross */}
+      {saved && (
+        <button className={'saved-home' + (onHome ? ' on' : '')} aria-pressed={onHome}
+          onClick={() => { update(() => ({ homeVerse: onHome ? null : card.key })); buzz(HAPTIC.tap); toast(onHome ? 'Taken off your Home screen' : `${formatRef(card)} is on your Home screen`); }}>
+          {onHome ? <IconCheck size={14} /> : <IconHome size={14} />}{onHome ? 'On Home' : 'Show on Home'}
+        </button>
+      )}
       <div className="saved-actions">
         <button onClick={() => setWriting((w) => !w)} aria-expanded={writing}><IconNote size={18} />{count ? `Notes (${count})` : 'Note'}</button>
         <button onClick={() => onShare(card, scene)}><IconShare size={18} />Share</button>

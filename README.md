@@ -2,7 +2,7 @@
 
 A verse for what's on your mind. Chestnut is an installable web app for reading, saving and sharing Bible verses:
 
-- **The cross and the name of Jesus**: a plain wooden cross on a hill at sunrise, with the name and Scripture beneath it. It opens the app and greets a new person on the welcome screen with Romans 8:1; at the top of Home it carries Romans 8:1–2; and a small cross sits above the name on shared pictures.
+- **The cross and the name of Jesus**: a plain wooden cross on a hill at sunrise, with the name and Scripture beneath it. It opens the app and greets a new person on the welcome screen with Romans 8:1; at the top of Home it carries one verse of the reader's own choosing from their saved list (Romans 8:1–2 until they choose); and a small cross sits above the name on shared pictures.
 - **Verse feed**: full-screen cards, one verse each, grouped by topic. Swipe up for the next card; swipe left or right, or use the bar at the foot of the card, for the verse after or before it.
 - **Bible**: the whole King James Version, browsable by book and chapter, searchable by reference or by words.
 - **Saved and notes**: private to each person, stored on their own device.

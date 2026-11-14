@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { TOPICS, topicLabel } from '../data/topics';
-import { formatRef, versePath } from '../lib/books';
+import { getVerse, loadBible, useBible } from '../lib/bible';
+import { formatRef, refOf, versePath, type Ref, type VerseKey } from '../lib/books';
 import { homePassage } from '../lib/centre';
-import { countForTopic, countForTopics, verseOfTheDay } from '../lib/feed';
+import { cardByKey, countForTopic, countForTopics, verseOfTheDay } from '../lib/feed';
 import { journeyState, STEPS } from '../lib/journey';
 import { isDue, MEMORISED_BOX } from '../lib/memory';
 import { navigate } from '../lib/router';
@@ -11,10 +13,10 @@ import { APP_NAME } from '../lib/share';
 import { update, useStore } from '../lib/store';
 import { CrossScene } from '../components/CrossScene';
 import { STEP_ART } from '../components/Glyphs';
-import { IconCheck, IconFlame, IconForward, IconMemory, IconSettings, IconSprout, IconStar, Logo } from '../components/Icons';
+import { IconCheck, IconEdit, IconFlame, IconForward, IconMemory, IconSettings, IconSprout, IconStar, Logo } from '../components/Icons';
 import { Scripture } from '../components/Scripture';
 import { SoundButton } from '../components/Sound';
-import { TabBar } from '../components/ui';
+import { buzz, HAPTIC, Sheet, TabBar, toast } from '../components/ui';
 
 function greeting(name: string) {
   const h = new Date().getHours();
@@ -54,18 +56,79 @@ function Path() {
   );
 }
 
-/** The centrepiece: the cross, the name, and the passage beneath them. Opens the passage at its first verse. */
+/** A saved verse's words: from the feed's list, or from the Bible itself once it is loaded. */
+const textOf = (key: VerseKey): string | undefined => cardByKey(key)?.text ?? getVerse(refOf(key));
+
+/**
+ * The centrepiece: the cross, the name, and a passage beneath them. The passage is one of the
+ * reader's own saved verses if they have chosen one, and Romans 8:1-2 otherwise. Opens the passage.
+ */
 function Centre() {
-  const p = homePassage;
+  const saved = useStore((s) => s.saved);
+  const chosen = useStore((s) => s.homeVerse);
+  const bible = useBible();
+  const [picking, setPicking] = useState(false);
+  // a verse taken off the saved list no longer stands on Home
+  const key = chosen && saved[chosen] !== undefined ? chosen : null;
+  const keys = Object.keys(saved).sort((a, b) => saved[b] - saved[a]);
+  // verses saved from the Bible reader are read from the Bible itself
+  const needsBible = (key !== null && !cardByKey(key)) || (picking && keys.some((k) => !cardByKey(k)));
+  useEffect(() => { if (needsBible && !bible.ready) loadBible().catch(() => undefined); }, [needsBible, bible.ready]);
+
+  const own = key ? textOf(key) : undefined;
+  const p: { at: Ref; parts: string[]; ref: string } = key
+    ? { at: refOf(key), parts: own ? [own] : [], ref: formatRef(refOf(key)) }
+    : { at: homePassage, parts: homePassage.parts, ref: homePassage.ref };
+  const long = p.parts.join(' ').length > 230;
+  const choose = (k: VerseKey | null) => {
+    update(() => ({ homeVerse: k }));
+    buzz(HAPTIC.tap);
+    setPicking(false);
+    toast(k ? `${formatRef(refOf(k))} is on your Home screen` : 'Back to Romans 8:1\u20132');
+  };
   return (
-    <button className="centre" onClick={() => navigate(versePath(p))} aria-label={`Jesus. ${p.text} ${p.ref}. Open this passage`}>
-      <CrossScene variant="wide" live />
-      <span className="centre-sky"><strong className="centre-name">Jesus</strong></span>
-      <span className="centre-foot">
-        <span className="centre-verse">{p.parts.map((part, i) => <span className="centre-part" key={i}><Scripture text={part} />{' '}</span>)}</span>
-        <span className="centre-ref">{p.ref}</span>
-      </span>
-    </button>
+    <div className="centre-wrap">
+      <button className="centre" onClick={() => navigate(versePath(p.at))} aria-label={`Jesus. ${p.parts.join(' ')} ${p.ref}. Open this passage`}>
+        <CrossScene variant="wide" live />
+        <span className="centre-sky"><strong className="centre-name">Jesus</strong></span>
+        <span className="centre-foot">
+          <span className={'centre-verse' + (long ? ' long' : '')}>{p.parts.map((part, i) => <span className="centre-part" key={i}><Scripture text={part} />{' '}</span>)}</span>
+          <span className="centre-ref">{p.ref}</span>
+        </span>
+      </button>
+      <button className="centre-change" onClick={() => setPicking(true)} aria-label="Choose the verse shown here"><IconEdit size={15} />Change</button>
+
+      {/* the chooser covers the whole screen, not just this card */}
+      {createPortal(
+      <Sheet open={picking} onClose={() => setPicking(false)} title="Verse on your Home screen" tall>
+        {keys.length === 0 ? (
+          <div className="pick-empty">
+            <p>Choose any verse you have saved. You have none saved yet.</p>
+            <button className="btn" onClick={() => navigate('/feed')}>Browse verses</button>
+          </div>
+        ) : (
+          <ul className="pick-list">
+            {keys.map((k) => {
+              const text = textOf(k);
+              return (
+                <li key={k}>
+                  <button className={'pick' + (k === key ? ' on' : '')} aria-pressed={k === key} onClick={() => choose(k)}>
+                    <span className="pick-mark" aria-hidden>{k === key && <IconCheck size={13} />}</span>
+                    <span className="pick-body"><strong>{formatRef(refOf(k))}</strong><span>{text ? <Scripture text={text} /> : 'Opening the Bible…'}</span></span>
+                  </button>
+                </li>
+              );
+            })}
+            <li>
+              <button className={'pick' + (key === null ? ' on' : '')} aria-pressed={key === null} onClick={() => choose(null)}>
+                <span className="pick-mark" aria-hidden>{key === null && <IconCheck size={13} />}</span>
+                <span className="pick-body"><strong>{homePassage.ref}</strong><span>The app's own passage</span></span>
+              </button>
+            </li>
+          </ul>
+        )}
+      </Sheet>, document.querySelector('.app') ?? document.body)}
+    </div>
   );
 }
 
