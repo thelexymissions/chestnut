@@ -36,3 +36,16 @@ export function staleInstall(): boolean {
   const short = m.full - m.inner;
   return m.standalone && m.apple && m.portrait && m.safeTop > 0 && short >= 20 && short <= 140;
 }
+
+/**
+ * In a copy that stops short of the bottom of the screen, the home bar lies in the strip below the window, not
+ * inside it, so nothing in the window needs to keep clear of it. Dropping that allowance keeps the tab bar from
+ * looking twice as tall. The class also lets the strip take the colour of the screen above it.
+ */
+export function watchShortWindow() {
+  const apply = () => document.documentElement.classList.toggle('short-window', staleInstall());
+  apply();
+  window.addEventListener('resize', apply);
+  window.addEventListener('orientationchange', () => window.setTimeout(apply, 300));
+  window.addEventListener('pageshow', apply);
+}

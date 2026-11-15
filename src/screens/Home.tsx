@@ -159,7 +159,7 @@ function Centre() {
  * of the screen on iOS 26. Adding it again fixes that; a home-screen app's data goes with it, so a backup comes first.
  */
 function Refit() {
-  const seen = useStore((s) => s.refitSeen);
+  const seen = useStore((s) => s.refitHidden);
   const [stale] = useState(() => staleInstall());
   if (seen || !stale) return null;
   const backup = () => {
@@ -172,11 +172,12 @@ function Refit() {
       <ol>
         <li>Save a backup</li>
         <li>Remove Chestnut from your Home Screen</li>
-        <li>Add it again from Safari, then restore the backup in Settings</li>
+        <li>Open Chestnut in Safari and refresh the page once</li>
+        <li>Add it to your Home Screen, then restore the backup in Settings</li>
       </ol>
       <span className="row gap">
         <button className="btn small" onClick={backup}>Save a backup</button>
-        <button className="link" onClick={() => update(() => ({ refitSeen: true }))}>Not now</button>
+        <button className="link" onClick={() => update(() => ({ refitHidden: true }))}>Not now</button>
       </span>
     </section>
   );

@@ -30,7 +30,24 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,woff2,webp,png,svg,json}'],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
-        navigateFallback: 'index.html',
+        // The page itself is fetched fresh whenever there is a connection, and the saved copy is used only
+        // offline. Serving the saved copy first meant Safari could show an old page for a moment after an
+        // update, and adding the app to the Home Screen then took that old page's settings with it.
+        navigateFallback: null,
+        // so "/chestnut/" is not answered from the saved copy before the network is tried
+        directoryIndex: 'no-directory-index',
+        runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'chestnut-pages',
+              networkTimeoutSeconds: 4,
+              // offline and never opened online since installing: the copy saved with the app
+              precacheFallback: { fallbackURL: 'index.html' },
+            },
+          },
+        ],
       },
     }),
   ],

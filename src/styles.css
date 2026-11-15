@@ -98,6 +98,13 @@ a { color: inherit; }
 /* On a phone the page behind the app takes the app's own colour, so that if a browser leaves a strip
    below the app (under its own floating toolbar, say) it reads as part of the app, not as a black band. */
 @media (max-width: 559px) { html, body { background: var(--bg); } }
+/* A home-screen copy still on the see-through status bar stops short of the screen's foot (lib/screen.ts).
+   The home bar is then in the strip below, so the tab bar needs no room for it; and the strip takes the
+   colour of whatever is at the foot of the screen, so it reads as part of the app. */
+:root.short-window { --safe-b: 0px; }
+:root.short-window:has(.feed), :root.short-window:has(.feed) body { background: #0c0705; }
+:root.short-window:has(.opening), :root.short-window:has(.opening) body,
+:root.short-window:has(.welcome), :root.short-window:has(.welcome) body { background: #0f0906; }
 @media (min-width: 560px) {
   .app { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 30px 80px rgba(0, 0, 0, 0.6); }
 }

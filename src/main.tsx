@@ -10,8 +10,10 @@ import '@fontsource-variable/newsreader';
 import '@fontsource-variable/newsreader/wght-italic.css';
 import './styles.css';
 import { App } from './App';
+import { watchShortWindow } from './lib/screen';
 
 registerSW({ immediate: true });
+watchShortWindow();
 
 
 createRoot(document.getElementById('root')!).render(
