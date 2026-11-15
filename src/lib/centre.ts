@@ -7,7 +7,8 @@ import { formatRef, type Ref } from './books';
 /** A verse, or a run of verses in one chapter, with its reference written out ("Romans 8:1–2"). */
 export interface Passage extends Ref { to: number; parts: string[]; text: string; ref: string }
 
-const named = (p: Omit<Passage, 'ref'>): Passage => ({ ...p, ref: p.to > p.v ? `${formatRef(p)}–${p.to}` : formatRef(p) });
+// the reference names the whole range by itself ("Romans 8:1–2"), since a reference with `to` is a passage
+const named = (p: Omit<Passage, 'ref'>): Passage => ({ ...p, ref: formatRef(p) });
 
 /** On the opening moment and the welcome screen. */
 export const openingPassage: Passage = named(cross.opening);

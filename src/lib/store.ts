@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import type { VerseKey } from './books';
+import { isKey, type VerseKey } from './books';
 
 // Everything a person creates lives on their own device, in localStorage.
 // Nothing is sent anywhere.
@@ -240,7 +240,8 @@ export function importBackup(json: string): { saved: number; notes: number } {
   if (!d || d.app !== 'chestnut' || typeof d.saved !== 'object' || typeof d.notes !== 'object') {
     throw new Error('This is not a Chestnut backup file.');
   }
-  const keyOk = (k: string) => /^\d{1,2}\.\d{1,3}\.\d{1,3}$/.test(k);
+  // a single verse ("43.3.16") or a passage ("45.8.1-4")
+  const keyOk = isKey;
   const saved: Record<string, number> = { ...state.saved };
   for (const [k, t] of Object.entries(d.saved)) if (keyOk(k) && typeof t === 'number' && saved[k] === undefined) saved[k] = t;
   const notes: Record<string, Note[]> = { ...state.notes };

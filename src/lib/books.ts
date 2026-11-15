@@ -44,24 +44,55 @@ export const BOOKS: Book[] = RAW.map(([name, abbr, chapters], i) => ({
 export const bookByN = (n: number): Book | undefined => BOOKS[n - 1];
 export const bookBySlug = (slug: string): Book | undefined => BOOKS.find((b) => b.slug === slug);
 
-/** "43.3.16" */
+/** "43.3.16" for one verse; "45.8.1-4" for a passage of consecutive verses in one chapter. */
 export type VerseKey = string;
-export interface Ref { b: number; c: number; v: number }
+/**
+ * A verse, or with `to` a passage running from verse `v` to verse `to` of the same chapter.
+ * Everything that names, links or stores a reference reads `to`, so a passage is saved,
+ * noted, shared and memorised as one item, just as a single verse is.
+ */
+export interface Ref { b: number; c: number; v: number; to?: number }
 
-export const keyOf = (r: Ref): VerseKey => `${r.b}.${r.c}.${r.v}`;
+/** True when the reference covers more than one verse. */
+export const isPassage = (r: Ref): r is Ref & { to: number } => r.to !== undefined && r.to > r.v;
+/** The last verse a reference covers. */
+export const lastVerse = (r: Ref): number => (isPassage(r) ? r.to : r.v);
+/** How many verses a reference covers. */
+export const verseSpan = (r: Ref): number => lastVerse(r) - r.v + 1;
+/** The same place as a single verse, dropping any range. */
+export const firstOf = (r: Ref): Ref => ({ b: r.b, c: r.c, v: r.v });
+/** A reference from verse `a` to verse `z` of one chapter, in either order; a single verse when they match. */
+export const spanOf = (b: number, c: number, a: number, z: number): Ref =>
+  a === z ? { b, c, v: a } : { b, c, v: Math.min(a, z), to: Math.max(a, z) };
+
+const tail = (r: Ref, sep: string) => (isPassage(r) ? `${sep}${r.to}` : '');
+export const keyOf = (r: Ref): VerseKey => `${r.b}.${r.c}.${r.v}${tail(r, '-')}`;
 export const refOf = (k: VerseKey): Ref => {
-  const [b, c, v] = k.split('.').map(Number);
-  return { b, c, v };
+  const [b, c, rest = ''] = k.split('.');
+  const [v, to] = rest.split('-').map(Number);
+  return to > v ? { b: Number(b), c: Number(c), v, to } : { b: Number(b), c: Number(c), v };
 };
+/** True for a well-formed verse or passage key, as stored or read from a backup file. */
+export const isKey = (k: string): boolean => /^\d{1,2}\.\d{1,3}\.\d{1,3}(-\d{1,3})?$/.test(k);
 /** Psalms reads better in the singular for a single chapter or verse. */
 const displayName = (b: Book) => (b.n === 19 ? 'Psalm' : b.name);
-export const formatRef = (r: Ref): string => `${displayName(BOOKS[r.b - 1])} ${r.c}:${r.v}`;
+export const formatRef = (r: Ref): string => `${displayName(BOOKS[r.b - 1])} ${r.c}:${r.v}${tail(r, '\u2013')}`;
 /** "1 Thess 5:16": for places too narrow for the full book name. */
-export const formatRefShort = (r: Ref): string => `${BOOKS[r.b - 1].abbr} ${r.c}:${r.v}`;
+export const formatRefShort = (r: Ref): string => `${BOOKS[r.b - 1].abbr} ${r.c}:${r.v}${tail(r, '\u2013')}`;
 export const formatChapter = (b: number, c: number): string => `${displayName(BOOKS[b - 1])} ${c}`;
-export const versePath = (r: Ref): string => `/v/${BOOKS[r.b - 1].slug}/${r.c}/${r.v}`;
-export const chapterPath = (b: number, c: number, v?: number): string =>
-  `/bible/${BOOKS[b - 1].slug}/${c}${v ? '/' + v : ''}`;
+export const versePath = (r: Ref): string => `/v/${BOOKS[r.b - 1].slug}/${r.c}/${r.v}${tail(r, '-')}`;
+/** The chapter in the reader, with a verse or (given `to`) a passage selected. */
+export const chapterPath = (b: number, c: number, v?: number, to?: number): string =>
+  `/bible/${BOOKS[b - 1].slug}/${c}${v ? '/' + v + (to && to > v ? '-' + to : '') : ''}`;
+/** The reader, open at a reference with all of it selected. */
+export const readerPath = (r: Ref): string => chapterPath(r.b, r.c, r.v, r.to);
+/** "4" or "1-4", as it appears in a path, back to verse numbers. */
+export function parseVerses(s: string | undefined): { v: number; to?: number } | undefined {
+  const m = (s ?? '').match(/^(\d{1,3})(?:-(\d{1,3}))?$/);
+  if (!m || Number(m[1]) < 1) return undefined;
+  const v = Number(m[1]), to = m[2] ? Number(m[2]) : undefined;
+  return to && to > v ? { v, to } : { v };
+}
 
 // ---- parsing what people type: "John 3:16", "jn 3 16", "1 cor 13:4-7", "Ps 23", "Song 2" ----
 const ALIASES: Record<string, number> = {};

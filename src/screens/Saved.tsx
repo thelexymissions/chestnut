@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react';
 import { topicById, topicLabel } from '../data/topics';
-import { getVerse, useBible } from '../lib/bible';
-import { formatRef, refOf, versePath, type VerseKey } from '../lib/books';
+import { useBible } from '../lib/bible';
+import { formatRef, isPassage, refOf, verseSpan, versePath, type VerseKey } from '../lib/books';
+import { needsBibleFor, partsOf, textOf } from '../lib/passage';
 import { cardByKey, type Card } from '../lib/feed';
 import { navigate } from '../lib/router';
 import { pickScene, sceneById, sceneUrl, type Scene } from '../lib/scenes';
 import { toggleMemorise, toggleSaved, update, useStore } from '../lib/store';
 import { IconBookmark, IconCheck, IconHome, IconMemory, IconNote, IconPlay, IconShare } from '../components/Icons';
-import { Scripture } from '../components/Scripture';
+import { PassageText } from '../components/Scripture';
 import { NoteComposer, NotesList, ShareSheet, type VerseLike } from '../components/VerseSheets';
 import { buzz, HAPTIC, Segmented, TabBar, toast } from '../components/ui';
 
@@ -27,8 +28,8 @@ function Item({ card, onShare }: { card: Card; onShare: (c: Card, s: Scene) => v
     <li className="saved-item">
       <button className={`saved-card ink-${scene.ink}`} onClick={() => navigate(versePath(card))} aria-label={`Open ${formatRef(card)} as a card`}>
         <span className={'votd-bg' + (scene.kind === 'photo' ? ' photo' : '')} style={{ backgroundImage: `url("${sceneUrl(scene)}")` }} />
-        <span className="saved-text"><Scripture text={card.text} /></span>
-        <span className="saved-ref">{formatRef(card)}{card.topics.length ? ` · ${card.topics.slice(0, 2).map(topicLabel).join(', ')}` : ''}</span>
+        <span className={'saved-text' + (isPassage(card) ? ' passage' : '')}><PassageText parts={isPassage(card) ? partsOf(card) : undefined} text={card.text} /></span>
+        <span className="saved-ref">{formatRef(card)}{isPassage(card) ? ` · ${verseSpan(card)} verses` : ''}{card.topics.length ? ` · ${card.topics.slice(0, 2).map(topicLabel).join(', ')}` : ''}</span>
       </button>
       {/* one saved verse can stand on the Home screen, under the cross */}
       {saved && (
@@ -65,13 +66,14 @@ export function Saved() {
     return Object.keys(notes).sort((a, b) => (notes[b][0]?.at ?? 0) - (notes[a][0]?.at ?? 0));
   }, [tab, saved, notes]);
 
-  const needsBible = keys.some((k) => !cardByKey(k));
+  // verses saved from the Bible reader, and passages, are read from the Bible itself
+  const needsBible = keys.some(needsBibleFor);
   const bible = useBible();
   const cards: Card[] = keys.map((k) => {
     const c = cardByKey(k);
     if (c) return c;
     const r = refOf(k);
-    const text = getVerse(r);
+    const text = textOf(r);
     return text ? { ...r, key: k, text, topics: [] } : undefined;
   }).filter((c): c is Card => !!c);
 

@@ -5,7 +5,7 @@ A verse for what's on your mind. Chestnut is an installable web app for reading,
 - **The cross and the name of Jesus**: a plain wooden cross on a hill at sunrise, with the name and Scripture beneath it. It opens the app and greets a new person on the welcome screen with Romans 8:1; at the top of Home it carries one verse of the reader's own choosing from their saved list (Romans 8:1–2 until they choose); and a small cross sits above the name on shared pictures.
 - **Verse feed**: full-screen cards, one verse each, grouped by topic. Swipe up for the next card; swipe left or right, or use the bar at the foot of the card, for the verse after or before it.
 - **Bible**: the whole King James Version, browsable by book and chapter, searchable by reference or by words.
-- **Saved and notes**: private to each person, stored on their own device.
+- **Saved and notes**: private to each person, stored on their own device. A verse or a passage of consecutive verses can be saved.
 - **Memorise**: mark verses, then review them on a fixed schedule with four exercises.
 - **Trivia**: a second deck of cards with Bible facts, switched to from the feed and never mixed with the verses.
 - **Welcome**: three taps about how you are, a verse for it, a first go at learning it, then a short path that introduces the rest.
@@ -51,6 +51,15 @@ The drawing is `src/components/CrossScene.tsx`; the opening moment is `src/compo
 ### Change the feed
 
 Edit `data/topic-verses.json` (add or remove references such as `"John 3:16"`), then run `npm run build`. To add a topic, also add it to `src/data/topics.ts` and to the `TOPICS` table in `scripts/build-curated.mjs`.
+
+## Passages
+
+A passage is a run of consecutive verses in one chapter, of any length up to the whole chapter. It is kept as one item: saved, noted, shared, memorised and shown on Home as one.
+
+- **Choosing one**: in the Bible reader, tap a verse, then tap another in the same chapter. Tapping an end verse shortens the passage; tapping inside it starts again from that verse. Typing a range in the search ("1 Cor 13:4-7") opens the reader with it selected. In the verse feed, after reading on sideways from a card, More offers to save the run from the card's verse to the one showing.
+- **Storage**: a passage's key is the first verse's key with the last verse after a dash: `45.8.1-4` is Romans 8:1–4. `keyOf`, `refOf`, `formatRef`, `versePath` and `chapterPath` in `src/lib/books.ts` all read the range, so links (`#/v/romans/8/1-4`), labels and backups carry it. The words are read from the verified text by `src/lib/passage.ts`; none are stored.
+- **Showing one**: every verse keeps its number in small type. A feed card shrinks the type to fit; a passage that will not fit even at 17px is faded out with a button to read all of it in the reader. Swiping sideways from a passage card reads on from its first or last verse.
+- **Memorising one**: the same exercises run on the whole passage. In Name the reference, every wrong choice is a real passage of the same length (moved along the chapter, the same verse numbers elsewhere, or another passage on the list), so the length gives nothing away.
 
 ## Swiping in the verse feed
 

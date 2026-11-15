@@ -1,5 +1,5 @@
 import { chapterCount, chapterWords, getVocab, stepRef, verseExists } from './bible';
-import { keyOf, refOf, type Ref, type VerseKey } from './books';
+import { isPassage, keyOf, refOf, verseSpan, type Ref, type VerseKey } from './books';
 import { hash } from './scenes';
 import { dayNumber, type MemoryEntry } from './store';
 
@@ -149,6 +149,7 @@ export function wordChoices(answer: string, ref: Ref, count: number, rand: () =>
  * verse numbers in a different book; other chapters of the same book fill any gap.
  */
 export function referenceChoices(ref: Ref, memoryKeys: VerseKey[], rand: () => number): Ref[] {
+  if (isPassage(ref)) return passageReferenceChoices(ref, memoryKeys, rand);
   const key = keyOf(ref);
   const out: Ref[] = [];
   const add = (r: Ref | undefined) => {
@@ -168,6 +169,7 @@ export function referenceChoices(ref: Ref, memoryKeys: VerseKey[], rand: () => n
  * first, then from the verses next to the right one.
  */
 export function verseChoices(ref: Ref, memoryKeys: VerseKey[], rand: () => number): Ref[] {
+  if (isPassage(ref)) return passageVerseChoices(ref, memoryKeys, rand);
   const key = keyOf(ref);
   const out: Ref[] = [];
   const add = (r: Ref | undefined) => {
@@ -176,5 +178,43 @@ export function verseChoices(ref: Ref, memoryKeys: VerseKey[], rand: () => numbe
   for (const k of shuffled(memoryKeys.filter((x) => x !== key), rand).slice(0, 2)) add(refOf(k));
   for (const d of shuffled([-2, -1, 1, 2], rand)) { if (out.length >= 3) break; add(stepRef(ref, d)); }
   for (const d of [3, -3, 4, -4, 5, -5]) { if (out.length >= 3) break; add(stepRef(ref, d)); }
+  return shuffled([ref, ...out.slice(0, 3)], rand);
+}
+
+// ---------- passages ----------
+// A passage is memorised as a whole. Its wrong choices are passages of the same length, so the length gives
+// nothing away: another passage on the list, the same passage moved along its chapter, and the same verse
+// numbers in another book or chapter. Every one is checked to exist.
+
+const passageExists = (r: Ref) => isPassage(r) && verseExists({ b: r.b, c: r.c, v: r.v }) && verseExists({ b: r.b, c: r.c, v: r.to });
+
+function passageCollector(ref: Ref) {
+  const key = keyOf(ref);
+  const out: Ref[] = [];
+  const add = (r: Ref | undefined) => {
+    if (r && passageExists(r) && keyOf(r) !== key && !out.some((x) => keyOf(x) === keyOf(r))) out.push(r);
+  };
+  const moved = (d: number): Ref => ({ b: ref.b, c: ref.c, v: ref.v + d, to: (ref.to ?? ref.v) + d });
+  return { out, add, moved };
+}
+
+function passageReferenceChoices(ref: Ref, memoryKeys: VerseKey[], rand: () => number): Ref[] {
+  const n = verseSpan(ref);
+  const { out, add, moved } = passageCollector(ref);
+  const lengthMatch = memoryKeys.map(refOf).filter((r) => isPassage(r) && verseSpan(r) === n);
+  add(shuffled(lengthMatch, rand).find((r) => keyOf(r) !== keyOf(ref)));
+  for (const d of shuffled([-n, n, -1, 1, -2, 2], rand)) { if (out.length >= 2) break; add(moved(d)); }
+  for (const b of shuffled(Array.from({ length: 66 }, (_, i) => i + 1), rand)) { if (out.length >= 3) break; if (b !== ref.b) add({ ...ref, b }); }
+  for (const c of shuffled(Array.from({ length: chapterCount(ref.b) }, (_, i) => i + 1), rand)) { if (out.length >= 3) break; add({ ...ref, c }); }
+  for (const d of [3, -3, 4, -4, 5, -5]) { if (out.length >= 3) break; add(moved(d)); }
+  return shuffled([ref, ...out.slice(0, 3)], rand);
+}
+
+function passageVerseChoices(ref: Ref, memoryKeys: VerseKey[], rand: () => number): Ref[] {
+  const { out, add, moved } = passageCollector(ref);
+  for (const r of shuffled(memoryKeys.map(refOf).filter(isPassage), rand).slice(0, 1)) add(r);
+  for (const d of shuffled([-2, -1, 1, 2], rand)) { if (out.length >= 3) break; add(moved(d)); }
+  for (const d of [3, -3, 4, -4, 5, -5]) { if (out.length >= 3) break; add(moved(d)); }
+  for (const c of shuffled(Array.from({ length: chapterCount(ref.b) }, (_, i) => i + 1), rand)) { if (out.length >= 3) break; add({ ...ref, c }); }
   return shuffled([ref, ...out.slice(0, 3)], rand);
 }

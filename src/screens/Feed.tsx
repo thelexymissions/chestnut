@@ -2,7 +2,10 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import { flushSync } from 'react-dom';
 import { topicById, topicLabel } from '../data/topics';
 import { getVerse, loadBible, stepRef, useBible, verseCount } from '../lib/bible';
-import { chapterPath, formatRef, formatRefShort, keyOf, refOf, type Ref, type VerseKey } from '../lib/books';
+import {
+  firstOf, formatRef, formatRefShort, isPassage, keyOf, lastVerse, readerPath, refOf, spanOf, verseSpan, type Ref, type VerseKey,
+} from '../lib/books';
+import { needsBibleFor, partsOf, textOf } from '../lib/passage';
 import { buildFeed, cardByKey, displayTopic, sessionSeed, type Card } from '../lib/feed';
 import { PROMPTS, type Prompt } from '../lib/journey';
 import { arrivedFresh, navigate } from '../lib/router';
@@ -14,7 +17,7 @@ import {
 } from '../components/Icons';
 import { SceneView } from '../components/Scene';
 import { SoundButton } from '../components/Sound';
-import { Scripture } from '../components/Scripture';
+import { PassageText, Scripture } from '../components/Scripture';
 import { NotesSheet, QuickActions, ShareSheet, type VerseLike } from '../components/VerseSheets';
 import { buzz, HAPTIC, ModeSwitch, TabBar, toast } from '../components/ui';
 
@@ -69,11 +72,27 @@ function swallowNextClick() {
 }
 
 /** The verse number to show for a neighbour: just the number in the same chapter, more when it is further off. */
-const nearLabel = (from: Ref, to: Ref): string =>
-  to.b !== from.b ? formatRefShort(to) : to.c !== from.c ? `${to.c}:${to.v}` : String(to.v);
+const nearLabel = (from: Ref, to: Ref): string => {
+  const verses = isPassage(to) ? `${to.v}\u2013${to.to}` : String(to.v);
+  return to.b !== from.b ? formatRefShort(to) : to.c !== from.c ? `${to.c}:${verses}` : verses;
+};
+
+/** The last verse of a reference, as a single verse: where reading on after a passage starts from. */
+const endOf = (r: Ref): Ref => ({ b: r.b, c: r.c, v: lastVerse(r) });
+
+/**
+ * After reading on sideways from a card: the passage from the card's own verse (or passage) to the verse now
+ * showing, when both are in one chapter. Offered in More as one tap to save the run of verses just read.
+ */
+function passageFrom(card: Ref, shown: Ref): VerseLike | null {
+  if (keyOf(card) === keyOf(shown) || card.b !== shown.b || card.c !== shown.c) return null;
+  const span = spanOf(card.b, card.c, Math.min(card.v, shown.v), Math.max(lastVerse(card), lastVerse(shown)));
+  const text = verseSpan(span) > 1 ? textOf(span) : undefined;
+  return text ? { ...span, text } : null;
+}
 
 // ---------- one verse, typeset to fit ----------
-const Panel = memo(function Panel({ verse, topic, origin, reveal, onReturn, onStep, ready }: {
+const Panel = memo(function Panel({ verse, topic, origin, reveal, onReturn, onStep, ready, before: beforeIn, after: afterIn }: {
   verse: Shown;
   topic?: string;
   /** set when this is not the card's own verse: offers the way back */
@@ -83,12 +102,19 @@ const Panel = memo(function Panel({ verse, topic, origin, reveal, onReturn, onSt
   onStep?: (dir: -1 | 1) => void;
   /** the Bible is loaded, so the verses either side are known */
   ready: boolean;
+  /** what the steppers lead to, when the card knows better (a passage on either side) */
+  before?: Ref;
+  after?: Ref;
 }) {
   const box = useRef<HTMLElement>(null);
   const mainEl = useRef<HTMLDivElement>(null);
   const textEl = useRef<HTMLParagraphElement>(null);
   const refEl = useRef<HTMLButtonElement>(null);
   const textSize = useStore((s) => s.textSize);
+  const passage = isPassage(verse);
+  const parts = passage && ready ? partsOf(verse) : undefined;
+  // a passage too long for the card even in small type: it fades out, with a way to read all of it
+  const [cut, setCut] = useState(false);
 
   // largest type at which the whole verse fits
   useLayoutEffect(() => {
@@ -108,13 +134,19 @@ const Panel = memo(function Panel({ verse, topic, origin, reveal, onReturn, onSt
       let size = Math.round(BASE_SIZE[sizeClass(verse.text.length)] * widthFactor * SCALES[textSize]);
       const room = el.clientWidth || w - 108;
       const widest = widestWord(verse.text, size);
-      if (widest > room) size = Math.max(15, Math.floor(size * (room / widest)));
+      // a passage that will not fit even so is cut short and faded at a size still easy to read, not shrunk to a wall of small type
+      const least = passage ? 17 : 15;
+      if (widest > room) size = Math.max(least, Math.floor(size * (room / widest)));
       el.style.fontSize = size + 'px';
+      main.classList.remove('cut');
       let guard = 0;
-      while (main.scrollHeight > main.clientHeight + 1 && size > 15 && guard++ < 60) {
+      while (main.scrollHeight > main.clientHeight + 1 && size > least && guard++ < 80) {
         size -= 1;
         el.style.fontSize = size + 'px';
       }
+      const over = passage && main.scrollHeight > main.clientHeight + 1;
+      main.classList.toggle('cut', over);
+      setCut(over);
     };
     fit();
     const ro = new ResizeObserver(fit);
@@ -124,9 +156,10 @@ const Panel = memo(function Panel({ verse, topic, origin, reveal, onReturn, onSt
   }, [verse.key, verse.text, textSize, topic, origin, ready]);
 
   const ref = formatRef(verse);
-  const before = ready ? stepRef(verse, -1) : undefined;
-  const after = ready ? stepRef(verse, 1) : undefined;
+  const before = beforeIn ?? (ready ? stepRef(firstOf(verse), -1) : undefined);
+  const after = afterIn ?? (ready ? stepRef(endOf(verse), 1) : undefined);
   const total = ready ? verseCount(verse.b, verse.c) : 0;
+  const at = (n: number) => (total > 1 ? ((n - 1) / (total - 1)) * 100 : 50);
   return (
     <article className="panel" ref={box} aria-label={`${ref}. ${verse.text}`}>
       <div className="panel-main" ref={mainEl}>
@@ -135,8 +168,11 @@ const Panel = memo(function Panel({ verse, topic, origin, reveal, onReturn, onSt
             <IconReturn size={14} />{formatRef(origin)}
           </button>
         ) : topic ? <div className="card-topic">{topicLabel(topic)}</div> : <span className="card-topic ghost" aria-hidden />}
-        <p className="card-text" ref={textEl}><Scripture text={verse.text} reveal={reveal} /></p>
+        <p className="card-text" ref={textEl}>{passage ? <PassageText parts={parts} text={verse.text} /> : <Scripture text={verse.text} reveal={reveal} />}</p>
       </div>
+      {cut && (
+        <button className="card-more" onClick={() => navigate(readerPath(verse))}>Read all {verseSpan(verse)} verses <IconForward size={15} /></button>
+      )}
       {/* The bar for reading on: the verse before, where you are, the verse after. It keeps its place at the foot of
           the card whatever the length of the verse, so a thumb reading on never has to hunt for it; and a swipe
           that starts on it is always sideways. */}
@@ -145,15 +181,19 @@ const Panel = memo(function Panel({ verse, topic, origin, reveal, onReturn, onSt
           <button className="refstep" aria-label={before ? `Previous verse: ${formatRef(before)}` : 'Previous verse'} disabled={ready && !before} onClick={() => onStep?.(-1)}>
             <IconBack size={17} />{before && <span>{nearLabel(verse, before)}</span>}
           </button>
-          <button className="card-ref" ref={refEl} onClick={() => { markJourney('around'); navigate(chapterPath(verse.b, verse.c, verse.v)); }} aria-label={`${ref}. Read the chapter`}>
+          <button className="card-ref" ref={refEl} onClick={() => { markJourney('around'); navigate(readerPath(verse)); }} aria-label={`${ref}. Read the chapter`}>
             <b className="full">{ref}</b><b className="short">{formatRefShort(verse)}</b><span>KJV</span><IconBook size={14} />
           </button>
           <button className="refstep" aria-label={after ? `Next verse: ${formatRef(after)}` : 'Next verse'} disabled={ready && !after} onClick={() => onStep?.(1)}>
             {after && <span>{nearLabel(verse, after)}</span>}<IconForward size={17} />
           </button>
         </div>
-        {/* where this verse sits in its chapter */}
-        <div className="ribbon-pos" aria-hidden>{total > 0 && <i style={{ left: `${total > 1 ? ((verse.v - 1) / (total - 1)) * 100 : 50}%` }} />}</div>
+        {/* where this verse, or the stretch of a passage, sits in its chapter */}
+        <div className="ribbon-pos" aria-hidden>
+          {total > 0 && (passage
+            ? <b style={{ left: `${at(verse.v)}%`, width: `${at(lastVerse(verse)) - at(verse.v)}%` }} />
+            : <i style={{ left: `${at(verse.v)}%` }} />)}
+        </div>
       </div>
     </article>
   );
@@ -298,9 +338,12 @@ const VerseCard = memo(function VerseCard({ card, topicId, active, hero, bibleRe
       return n;
     });
   }, [card.key]);
-  const shown: Shown = (offset !== 0 && verseAt(stepRef(card, offset))) || card;
-  const prev = active && bibleReady ? verseAt(stepRef(shown, -1)) : undefined;
-  const next = active && bibleReady ? verseAt(stepRef(shown, 1)) : undefined;
+  // what shows `o` steps sideways from the card: the card itself at 0; a passage is read on from its first and last verses
+  const shownAt = (o: number): Shown | undefined =>
+    o === 0 ? card : verseAt(o > 0 ? stepRef(endOf(card), o) : stepRef(firstOf(card), o));
+  const shown: Shown = (offset !== 0 && shownAt(offset)) || card;
+  const prev = active && bibleReady ? shownAt(offset - 1) : undefined;
+  const next = active && bibleReady ? shownAt(offset + 1) : undefined;
   // the handlers below outlive a render, so they read the neighbours from here
   const nb = useRef({ prev, next });
   nb.current = { prev, next };
@@ -520,8 +563,8 @@ const VerseCard = memo(function VerseCard({ card, topicId, active, hero, bibleRe
       <div className="card-track" ref={track}>
         <div className="slot" inert>{prev && <Panel verse={prev} reveal={false} topic={offset === 1 ? topicId : undefined} origin={offset === 1 ? undefined : card} ready={bibleReady} />}</div>
         <div className="slot">
-          <Panel verse={shown} topic={away ? undefined : topicId} origin={away ? card : undefined} reveal={!away}
-            onReturn={onReturn} onStep={step} ready={bibleReady} />
+          <Panel verse={shown} topic={away ? undefined : topicId} origin={away ? card : undefined} reveal={!away && !isPassage(shown)}
+            onReturn={onReturn} onStep={step} ready={bibleReady} before={prev} after={next} />
         </div>
         <div className="slot" inert>{next && <Panel verse={next} reveal={false} topic={offset === -1 ? topicId : undefined} origin={offset === -1 ? undefined : card} ready={bibleReady} />}</div>
       </div>
@@ -635,8 +678,8 @@ export function Feed({ mode, first, coach }: { mode: 'topics' | 'saved'; first?:
 
   // verses not on the curated list (saved from the Bible, or opened by link) need the Bible itself
   const needsBible = useMemo(() => {
-    if (firstKey && !cardByKey(firstKey)) return true;
-    return mode === 'saved' && Object.keys(savedMap).some((k) => !cardByKey(k));
+    if (firstKey && needsBibleFor(firstKey)) return true;
+    return mode === 'saved' && Object.keys(savedMap).some(needsBibleFor);
   }, [firstKey, mode]); // eslint-disable-line react-hooks/exhaustive-deps
   const bible = useBible();
   const bibleReady = bible.ready;
@@ -647,7 +690,7 @@ export function Feed({ mode, first, coach }: { mode: 'topics' | 'saved'; first?:
   const cards: Card[] = useMemo(() => {
     const fromBible = (k: VerseKey): Card | undefined => {
       const r = refOf(k);
-      const text = getVerse(r);
+      const text = textOf(r);
       return text ? { ...r, key: k, text, topics: [] } : undefined;
     };
     if (mode === 'saved') {
@@ -689,7 +732,7 @@ export function Feed({ mode, first, coach }: { mode: 'topics' | 'saved'; first?:
   const [clean, setClean] = useState(false);
   const [noteFor, setNoteFor] = useState<VerseLike | null>(null);
   const [shareFor, setShareFor] = useState<{ verse: VerseLike; scene: Scene } | null>(null);
-  const [moreFor, setMoreFor] = useState<{ verse: Shown; originKey: VerseKey; topicId?: string } | null>(null);
+  const [moreFor, setMoreFor] = useState<{ verse: Shown; originKey: VerseKey; topicId?: string; passage: VerseLike | null } | null>(null);
   const bgOverrides = useStore((s) => s.bg);
 
   useLayoutEffect(() => {
@@ -721,7 +764,7 @@ export function Feed({ mode, first, coach }: { mode: 'topics' | 'saved'; first?:
     // opening anything brings the buttons back, so nothing is left hidden behind a sheet
     onNote: (v) => { setClean(false); setNoteFor(v); },
     onShare: (v, scene) => { setClean(false); setShareFor({ verse: v, scene }); },
-    onMore: (v, originKey, topicId) => { setClean(false); setMoreFor({ verse: v, originKey, topicId }); },
+    onMore: (v, originKey, topicId) => { setClean(false); setMoreFor({ verse: v, originKey, topicId, passage: passageFrom(refOf(originKey), v) }); },
     onTap: () => setClean((v) => !v),
     pager,
   }), [pager]);
@@ -834,6 +877,7 @@ export function Feed({ mode, first, coach }: { mode: 'topics' | 'saved'; first?:
       <ShareSheet verse={shareFor?.verse ?? null} scene={shareFor?.scene ?? null} onClose={() => setShareFor(null)} />
       <QuickActions
         verse={more?.verse ?? null}
+        passage={more?.passage}
         onClose={() => setMoreFor(null)}
         onNote={() => more && setNoteFor(more.verse)}
         onShare={() => more && setShareFor({ verse: more.verse, scene: sceneFor(more.originKey, more.topicId, bgOverrides[more.originKey]) })}

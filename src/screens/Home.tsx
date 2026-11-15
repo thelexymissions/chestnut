@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { TOPICS, topicLabel } from '../data/topics';
-import { getVerse, loadBible, useBible } from '../lib/bible';
-import { formatRef, refOf, versePath, type Ref, type VerseKey } from '../lib/books';
+import { loadBible, useBible } from '../lib/bible';
+import { formatRef, isPassage, refOf, versePath, type Ref, type VerseKey } from '../lib/books';
 import { homePassage } from '../lib/centre';
-import { cardByKey, countForTopic, countForTopics, verseOfTheDay } from '../lib/feed';
+import { countForTopic, countForTopics, verseOfTheDay } from '../lib/feed';
+import { needsBibleFor, partsOf, textOfKey } from '../lib/passage';
 import { journeyState, STEPS } from '../lib/journey';
 import { isDue, MEMORISED_BOX } from '../lib/memory';
 import { staleInstall } from '../lib/screen';
@@ -58,8 +59,28 @@ function Path() {
   );
 }
 
-/** A saved verse's words: from the feed's list, or from the Bible itself once it is loaded. */
-const textOf = (key: VerseKey): string | undefined => cardByKey(key)?.text ?? getVerse(refOf(key));
+/** A saved item's words: from the feed's list, or from the Bible itself once it is loaded. */
+const textOf = (key: VerseKey): string | undefined => textOfKey(key);
+
+/**
+ * The verses of a saved passage as stanzas, one per verse. A passage of up to about 600 letters is shown whole;
+ * a longer one shows its opening verses and ends with "…": the reference beneath gives the whole range, and a
+ * tap opens all of it.
+ */
+function stanzas(key: VerseKey): string[] {
+  const r = refOf(key);
+  if (!isPassage(r)) { const t = textOf(key); return t ? [t] : []; }
+  const parts = partsOf(r) ?? [];
+  if (parts.reduce((n, p) => n + p.text.length, 0) <= 600) return parts.map((p) => p.text);
+  const out: string[] = [];
+  let length = 0;
+  for (const p of parts) {
+    if (out.length && length + p.text.length > 420) { out[out.length - 1] += ' \u2026'; break; }
+    out.push(p.text);
+    length += p.text.length;
+  }
+  return out;
+}
 
 /**
  * The centrepiece: the cross, the name, and a passage beneath them. The passage is one of the
@@ -74,12 +95,11 @@ function Centre() {
   const key = chosen && saved[chosen] !== undefined ? chosen : null;
   const keys = Object.keys(saved).sort((a, b) => saved[b] - saved[a]);
   // verses saved from the Bible reader are read from the Bible itself
-  const needsBible = (key !== null && !cardByKey(key)) || (picking && keys.some((k) => !cardByKey(k)));
+  const needsBible = (key !== null && needsBibleFor(key)) || (picking && keys.some(needsBibleFor));
   useEffect(() => { if (needsBible && !bible.ready) loadBible().catch(() => undefined); }, [needsBible, bible.ready]);
 
-  const own = key ? textOf(key) : undefined;
   const p: { at: Ref; parts: string[]; ref: string } = key
-    ? { at: refOf(key), parts: own ? [own] : [], ref: formatRef(refOf(key)) }
+    ? { at: refOf(key), parts: stanzas(key), ref: formatRef(refOf(key)) }
     : { at: homePassage, parts: homePassage.parts, ref: homePassage.ref };
   const long = p.parts.join(' ').length > 230;
   const choose = (k: VerseKey | null) => {

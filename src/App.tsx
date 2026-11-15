@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { bookBySlug } from './lib/books';
+import { bookBySlug, parseVerses } from './lib/books';
 import { loadBible } from './lib/bible';
 import { useRoute } from './lib/router';
 import { grainUrl } from './lib/scenes';
@@ -64,9 +64,9 @@ export function App() {
     screen = <Trivia key={a ?? 'deck'} first={a} />;
   } else if (section === 'welcome') {
     screen = <Welcome />;
-  } else if (section === 'v' && bookBySlug(a ?? '') && Number(b) > 0 && Number(c) > 0) {
-    // a shared link: show the verse straight away, no questions first
-    const first = { b: bookBySlug(a)!.n, c: Number(b), v: Number(c) };
+  } else if (section === 'v' && bookBySlug(a ?? '') && Number(b) > 0 && parseVerses(c)) {
+    // a shared link: show the verse or passage straight away, no questions first
+    const first = { b: bookBySlug(a)!.n, c: Number(b), ...parseVerses(c)! };
     screen = <Feed key={`v-${a}-${b}-${c}`} mode="topics" first={first} />;
   } else if (section === 'bible') {
     screen = <Bible route={route} />;

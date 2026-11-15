@@ -39,6 +39,7 @@ export function Settings() {
   const install = useInstall();
   const memCount = useStore((s) => Object.keys(s.memory).length);
   const savedCount = useStore((s) => Object.keys(s.saved).length);
+  const passageCount = useStore((s) => Object.keys(s.saved).filter((k) => k.includes('-')).length);
   const noteCount = useStore((s) => Object.values(s.notes).reduce((a, n) => a + n.length, 0));
   const file = useRef<HTMLInputElement>(null);
   const [voiceList, setVoiceList] = useState(voices());
@@ -109,7 +110,7 @@ export function Settings() {
 
         <section className="group">
           <h2>Backup</h2>
-          <p className="hint">You have {savedCount} saved {savedCount === 1 ? 'verse' : 'verses'}, {noteCount} {noteCount === 1 ? 'note' : 'notes'} and {memCount} {memCount === 1 ? 'verse' : 'verses'} in Memorise. They live only on this device, so save a backup before changing phones or clearing your browser.</p>
+          <p className="hint">You have {savedCount - passageCount} saved {savedCount - passageCount === 1 ? 'verse' : 'verses'}{passageCount > 0 && <> and {passageCount} {passageCount === 1 ? 'passage' : 'passages'}</>}, {noteCount} {noteCount === 1 ? 'note' : 'notes'} and {memCount} {memCount === 1 ? 'verse' : 'verses'} in Memorise. They live only on this device, so save a backup before changing phones or clearing your browser.</p>
           <div className="row gap wrap">
             <button className="btn" onClick={() => { downloadBlob(new Blob([exportBackup()], { type: 'application/json' }), `chestnut-backup-${localDay()}.json`); toast('Backup saved to your downloads'); }}>Save a backup</button>
             <button className="btn ghost" onClick={() => file.current?.click()}>Restore from backup</button>

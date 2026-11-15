@@ -3,8 +3,9 @@ import {
   getChapter, searchBible, segments, startsParagraph, plain, useBible, type SearchScope,
 } from '../lib/bible';
 import {
-  BOOKS, bookBySlug, chapterPath, formatChapter, formatRef, keyOf, parseReference, type Ref,
+  BOOKS, bookBySlug, chapterPath, formatChapter, formatRef, keyOf, lastVerse, parseReference, parseVerses, refOf, spanOf, verseSpan, type Ref,
 } from '../lib/books';
+import { textOf } from '../lib/passage';
 import { back, navigate, type Route } from '../lib/router';
 import { pickScene } from '../lib/scenes';
 import { speak, speechSupported, useSpeaking, useSpeakingIndex } from '../lib/speech';
@@ -107,7 +108,7 @@ function SearchResults({ query }: { query: string }) {
               <span><small>Book</small>{book.name}</span><IconForward size={18} />
             </button>
           ) : (
-            <button className="goto-row" onClick={() => navigate(chapterPath(ref.b, ref.c!, ref.v))}>
+            <button className="goto-row" onClick={() => navigate(chapterPath(ref.b, ref.c!, ref.v, ref.vEnd))}>
               <span><small>Go to</small>{ref.v ? `${formatRef({ b: ref.b, c: ref.c, v: ref.v })}${ref.vEnd ? '–' + ref.vEnd : ''}` : formatChapter(ref.b, ref.c)}</span>
               <IconForward size={18} />
             </button>
@@ -161,13 +162,28 @@ function SearchResults({ query }: { query: string }) {
 }
 
 // ---------- chapter reader ----------
-function Reader({ b, c, v }: { b: number; c: number; v?: number }) {
+/**
+ * What tapping verse `n` does to the selection: tap one verse to select it, tap another in the chapter to select
+ * everything between, tap an end of a passage to shorten it, tap inside it to start again from that verse.
+ */
+function tapRange(r: { a: number; z: number } | null, n: number): { a: number; z: number } | null {
+  if (!r) return { a: n, z: n };
+  if (n < r.a) return { a: n, z: r.z };
+  if (n > r.z) return { a: r.a, z: n };
+  if (r.a === r.z) return null;
+  if (n === r.a) return { a: n + 1, z: r.z };
+  if (n === r.z) return { a: r.a, z: n - 1 };
+  return { a: n, z: n };
+}
+
+function Reader({ b, c, v, to }: { b: number; c: number; v?: number; to?: number }) {
   const verses = getChapter(b, c);
   const book = BOOKS[b - 1];
   const saved = useStore((s) => s.saved);
   const notes = useStore((s) => s.notes);
   const memory = useStore((s) => s.memory);
-  const [selected, setSelected] = useState<number | null>(v ?? null);
+  const [range, setRange] = useState<{ a: number; z: number } | null>(v ? { a: v, z: to ?? v } : null);
+  const tap = (n: number) => setRange((r) => tapRange(r, n));
   const [noteFor, setNoteFor] = useState<VerseLike | null>(null);
   const [shareFor, setShareFor] = useState<VerseLike | null>(null);
   const [moreFor, setMoreFor] = useState<VerseLike | null>(null);
@@ -180,13 +196,13 @@ function Reader({ b, c, v }: { b: number; c: number; v?: number }) {
 
   useEffect(() => { update(() => ({ lastRead: { b, c } })); }, [b, c]);
   useEffect(() => {
-    setSelected(v ?? null);
+    setRange(v ? { a: v, z: to ?? v } : null);
     const el = scroller.current;
     if (!el) return;
     if (v) {
-      requestAnimationFrame(() => el.querySelector(`[data-v="${v}"]`)?.scrollIntoView({ block: 'center' }));
+      requestAnimationFrame(() => el.querySelector(`[data-v="${v}"]`)?.scrollIntoView({ block: to ? 'start' : 'center' }));
     } else el.scrollTop = 0;
-  }, [b, c, v]);
+  }, [b, c, v, to]);
   useEffect(() => {
     if (speaking && speakingIndex >= 0) {
       scroller.current?.querySelector(`[data-v="${speakingIndex + 1}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -197,8 +213,23 @@ function Reader({ b, c, v }: { b: number; c: number; v?: number }) {
 
   const prev = c > 1 ? chapterPath(b, c - 1) : b > 1 ? chapterPath(b - 1, BOOKS[b - 2].chapters) : null;
   const next = c < book.chapters ? chapterPath(b, c + 1) : b < 66 ? chapterPath(b + 1, 1) : null;
-  const sel: VerseLike | null = selected && verses[selected - 1] ? { b, c, v: selected, text: plain(verses[selected - 1]) } : null;
+  // the selection, one verse or a passage, with its words read from the Bible
+  const span = range && verses[range.a - 1] && verses[range.z - 1] ? spanOf(b, c, range.a, range.z) : null;
+  const sel: VerseLike | null = span ? { ...span, text: textOf(span) ?? '' } : null;
   const selKey = sel ? keyOf(sel) : '';
+  const inRange = (n: number) => !!range && n >= range.a && n <= range.z;
+
+  // verses in this chapter that are saved, alone or as part of a saved passage; and where notes end
+  const savedHere = new Set<number>();
+  for (const k of Object.keys(saved)) {
+    const r = refOf(k);
+    if (r.b === b && r.c === c) for (let n = r.v; n <= lastVerse(r); n++) savedHere.add(n);
+  }
+  const notedHere = new Set<number>();
+  for (const k of Object.keys(notes)) {
+    const r = refOf(k);
+    if (r.b === b && r.c === c && notes[k]?.length) notedHere.add(lastVerse(r));
+  }
 
   // group verses into paragraphs using the KJV's own paragraph marks
   const paragraphs: number[][] = [];
@@ -248,19 +279,19 @@ function Reader({ b, c, v }: { b: number; c: number; v?: number }) {
         {paragraphs.map((p, pi) => (
           <p key={pi} className="para">
             {p.map((i) => {
-              const k = `${b}.${c}.${i + 1}`;
+              const n = i + 1;
               const cls = ['verse'];
-              if (selected === i + 1) cls.push('sel');
-              if (saved[k] !== undefined) cls.push('saved');
+              if (inRange(n)) cls.push('sel');
+              if (savedHere.has(n)) cls.push('saved');
               if (speaking && speakingIndex === i) cls.push('speaking');
               return (
-                <span key={i} data-v={i + 1} className={cls.join(' ')} role="button" tabIndex={0}
-                  aria-pressed={selected === i + 1}
-                  onClick={() => setSelected(selected === i + 1 ? null : i + 1)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected(selected === i + 1 ? null : i + 1); } }}>
+                <span key={i} data-v={n} className={cls.join(' ')} role="button" tabIndex={0}
+                  aria-pressed={inRange(n)}
+                  onClick={() => tap(n)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tap(n); } }}>
                   {i > 0 && <sup>{i + 1}</sup>}
                   {segments(verses[i]).map((s, si) => (s.italic ? <i key={si}>{smallCaps(s.text, `${si}-`)}</i> : <span key={si}>{smallCaps(s.text, `${si}-`)}</span>))}
-                  {notes[k]?.length ? <span className="note-dot" aria-label="You have a note on this verse" /> : null}{' '}
+                  {notedHere.has(n) ? <span className="note-dot" aria-label="You have a note here" /> : null}{' '}
                 </span>
               );
             })}
@@ -276,8 +307,11 @@ function Reader({ b, c, v }: { b: number; c: number; v?: number }) {
 
       {sel && (
         <div className="verse-bar" role="toolbar" aria-label={`Actions for ${formatRef(sel)}`}>
-          <div className="verse-bar-title"><strong>{formatRef(sel)}</strong>
-            <button className="icon-btn tiny" aria-label="Close" onClick={() => setSelected(null)}><IconClose size={18} /></button>
+          <div className="verse-bar-title">
+            <span><strong>{formatRef(sel)}</strong>
+              <small aria-live="polite">{verseSpan(sel) > 1 ? `${verseSpan(sel)} verses` : 'Tap another verse to select a passage'}</small>
+            </span>
+            <button className="icon-btn tiny" aria-label="Close" onClick={() => setRange(null)}><IconClose size={18} /></button>
           </div>
           <div className="verse-bar-row">
             <button onClick={() => { const now = toggleSaved(selKey); toast(now ? 'Saved' : 'Removed from saved'); }}>
@@ -305,7 +339,8 @@ export function Bible({ route }: { route: Route }) {
   const [, slug, cStr, vStr] = route.parts;
   const book = slug ? bookBySlug(slug) : undefined;
   const c = cStr ? Number(cStr) : undefined;
-  const v = vStr ? Number(vStr) : undefined;
+  const picked = parseVerses(vStr);
+  const v = picked?.v, to = picked?.to;
   const q = route.query.get('q') ?? '';
   const [query, setQuery] = useState(q);
   const input = useRef<HTMLInputElement>(null);
@@ -324,7 +359,7 @@ export function Bible({ route }: { route: Route }) {
   if (book && c) {
     return (
       <div className="screen bible">
-        {ready ? <Reader b={book.n} c={c} v={v} /> : <Loading error={error} />}
+        {ready ? <Reader b={book.n} c={c} v={v} to={to} /> : <Loading error={error} />}
         <TabBar />
       </div>
     );

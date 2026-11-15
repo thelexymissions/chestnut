@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { getVerse, useBible } from '../lib/bible';
-import { formatRef, keyOf, refOf, type Ref, type VerseKey } from '../lib/books';
-import { cardByKey } from '../lib/feed';
+import { useBible } from '../lib/bible';
+import { formatRef, isPassage, keyOf, refOf, type Ref, type VerseKey } from '../lib/books';
+import { partsOf, textOf, textOfKey } from '../lib/passage';
 import {
   applyResult, dueLabel, isDue, levelOf, MEMORISED_BOX, passes, pickBlanks, planFor, referenceChoices, rng,
   STEP_NAMES, tokenize, verseChoices, wordChoices, type Level, type Step, type StepKind,
@@ -10,16 +10,25 @@ import { back, navigate, type Route } from '../lib/router';
 import { speak, speechSupported, useSpeaking } from '../lib/speech';
 import { dayNumber, getState, setMemory, toggleMemorise, useStore, type MemoryEntry } from '../lib/store';
 import { IconCheck, IconClose, IconEye, IconForward, IconMemory, IconSpeaker, IconStop, IconTrash } from '../components/Icons';
-import { Scripture, smallCaps } from '../components/Scripture';
+import { PassageText, Scripture, smallCaps } from '../components/Scripture';
 import { buzz, celebrate, HAPTIC, Sheet, TabBar, toast } from '../components/ui';
 
 interface Verse extends Ref { key: VerseKey; text: string }
 
+/** A verse or a passage on the memorising list, with its words. A passage is practised as one. */
 function verseOf(key: VerseKey): Verse | undefined {
-  const r = refOf(key);
-  const text = cardByKey(key)?.text ?? getVerse(r);
-  return text ? { ...r, key, text } : undefined;
+  const text = textOfKey(key);
+  return text ? { ...refOf(key), key, text } : undefined;
 }
+
+/** A passage as running text with its verse numbers; a single verse as it is. */
+const Words = ({ verse }: { verse: Verse }) => <PassageText parts={isPassage(verse) ? partsOf(verse) : undefined} text={verse.text} />;
+
+/** The opening words of a passage, for telling passages apart without reading each in full. */
+const opening = (text: string, words = 26) => {
+  const w = text.split(/\s+/);
+  return w.length > words ? w.slice(0, words).join(' ') + ' \u2026' : text;
+};
 
 const LEVELS: Level[] = ['New', 'Learning', 'Familiar', 'Memorised'];
 
@@ -134,6 +143,7 @@ function RefExercise({ verse, seed, onDone, memoryKeys }: ExerciseProps & { memo
   return (
     <div className="ex">
       <div className="ex-body centred">
+        {/* no verse numbers here: they would give the reference away */}
         <p className="ex-verse"><Scripture text={verse.text} /></p>
         {done && <p className="ex-ref reveal">{answer}</p>}
       </div>
@@ -145,7 +155,7 @@ function RefExercise({ verse, seed, onDone, memoryKeys }: ExerciseProps & { memo
           </>
         ) : (
           <>
-            <p className="ex-hint">Where is this verse found?</p>
+            <p className="ex-hint">Where is this {isPassage(verse) ? 'passage' : 'verse'} found?</p>
             <Choices options={options} wrong={wrong} onPick={pick} columns={2} />
           </>
         )}
@@ -157,7 +167,7 @@ function RefExercise({ verse, seed, onDone, memoryKeys }: ExerciseProps & { memo
 /** See the reference, pick its verse. Exactly one of the four is right. */
 function VerseExercise({ verse, seed, onDone, memoryKeys }: ExerciseProps & { memoryKeys: VerseKey[] }) {
   const options = useMemo(
-    () => verseChoices(verse, memoryKeys, rng(seed)).map((r) => ({ key: keyOf(r), text: getVerse(r) ?? '' })),
+    () => verseChoices(verse, memoryKeys, rng(seed)).map((r) => ({ key: keyOf(r), text: isPassage(r) ? opening(textOf(r) ?? '') : textOf(r) ?? '' })),
     [verse, memoryKeys, seed],
   );
   const [wrong, setWrong] = useState<Set<string>>(new Set());
@@ -198,9 +208,9 @@ function ReciteExercise({ verse, onDone }: ExerciseProps) {
     <div className="ex">
       <div className="ex-body centred">
         <p className="ex-bigref">{formatRef(verse)}</p>
-        {shown ? <p className="ex-verse reveal"><Scripture text={verse.text} /></p>
+        {shown ? <p className="ex-verse reveal"><Words verse={verse} /></p>
           : hint ? <p className="ex-verse letters muted">{letters}</p>
-          : <p className="ex-prompt">Say the verse aloud or in your head, then check it.</p>}
+          : <p className="ex-prompt">Say the {isPassage(verse) ? 'passage' : 'verse'} aloud or in your head, then check it.</p>}
       </div>
       <div className="ex-foot">
         {shown ? (
@@ -229,7 +239,7 @@ function LearnStep({ verse, onDone }: ExerciseProps) {
     <div className="ex">
       <div className="ex-body centred">
         <p className="ex-ref">{formatRef(verse)}</p>
-        <p className="ex-verse large"><Scripture text={verse.text} /></p>
+        <p className={'ex-verse' + (verse.text.length > 320 ? '' : ' large')}><Words verse={verse} /></p>
         {speechSupported() && (
           <button className="btn ghost small" onClick={() => speak('learn:' + verse.key, [verse.text])}>
             {speaking ? <IconStop size={16} /> : <IconSpeaker size={16} />} {speaking ? 'Stop' : 'Listen'}
@@ -476,7 +486,7 @@ function MemoriseHome() {
       <Sheet open={!!detail && !!dv} onClose={() => setDetail(null)} title={dv ? formatRef(dv) : ''} tall>
         {dv && de && (
           <>
-            <blockquote className="sheet-quote"><Scripture text={dv.text} /><cite>{levelOf(de.box)} · {dueLabel(de, today)}</cite></blockquote>
+            <blockquote className="sheet-quote"><Words verse={dv} /><cite>{levelOf(de.box)} · {dueLabel(de, today)}</cite></blockquote>
             <p className="label">Extra practice</p>
             <div className="practice-grid">
               {PRACTICE.map((p) => (

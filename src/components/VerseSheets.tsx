@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { chapterPath, formatRef, keyOf, versePath, type Ref } from '../lib/books';
+import { formatRef, isPassage, keyOf, readerPath, versePath, type Ref } from '../lib/books';
+import { partsOf } from '../lib/passage';
 import { navigate } from '../lib/router';
 import {
   canNativeShare, canvasToBlob, copyText, downloadBlob, imageFileName, nativeShare, renderShareImage,
@@ -12,7 +13,7 @@ import {
   IconBook, IconBookmark, IconCheck, IconCopy, IconDownload, IconEdit, IconImage, IconMemory, IconNote, IconPalette,
   IconShare, IconSpeaker, IconStop, IconTrash, IconVerses, IconWhatsApp,
 } from './Icons';
-import { Scripture } from './Scripture';
+import { PassageText } from './Scripture';
 import { buzz, HAPTIC, Segmented, Sheet, timeAgo, toast } from './ui';
 
 export interface VerseLike extends Ref { text: string }
@@ -71,7 +72,7 @@ export function NoteComposer({ verse, autoFocus, onAdded }: { verse: Ref; autoFo
         ref={ref}
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="What is this verse saying to you?"
+        placeholder={isPassage(verse) ? 'What is this passage saying to you?' : 'What is this verse saying to you?'}
         rows={2}
         aria-label="Write a note"
         onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit(); }}
@@ -87,7 +88,7 @@ export function NotesSheet({ verse, onClose }: { verse: VerseLike | null; onClos
       {verse && (
         <>
           <blockquote className="sheet-quote">
-            <Scripture text={verse.text} />
+            <PassageText parts={partsOf(verse)} text={verse.text} />
             <cite>{formatRef(verse)}</cite>
           </blockquote>
           <NoteComposer verse={verse} />
@@ -136,7 +137,7 @@ export function ShareSheet({ verse, scene, onClose }: { verse: VerseLike | null;
   };
 
   return (
-    <Sheet open onClose={onClose} title="Share this verse" tall>
+    <Sheet open onClose={onClose} title={isPassage(verse) ? 'Share this passage' : 'Share this verse'} tall>
       <div className="share-preview-wrap">
         <div className={'share-preview ' + format} ref={holder} aria-label="Preview of the picture that will be shared" />
       </div>
@@ -172,14 +173,16 @@ export function ShareSheet({ verse, scene, onClose }: { verse: VerseLike | null;
           <IconShare /><span>Telegram</span>
         </a>
       </div>
-      <p className="hint">The link opens Chestnut on this verse. To send the picture on WhatsApp, tap Share picture and pick WhatsApp.</p>
+      <p className="hint">The link opens Chestnut on this {isPassage(verse) ? 'passage' : 'verse'}. To send the picture on WhatsApp, tap Share picture and pick WhatsApp.</p>
     </Sheet>
   );
 }
 
 // ---------- long-press quick actions ----------
-export function QuickActions({ verse, onClose, onNote, onShare, onChangeBackground, asCard }: {
+export function QuickActions({ verse, onClose, onNote, onShare, onChangeBackground, asCard, passage }: {
   verse: VerseLike | null;
+  /** in the feed, after reading on sideways: the passage from the card's verse to the one now showing */
+  passage?: VerseLike | null;
   onClose: () => void;
   onNote: () => void;
   onShare: () => void;
@@ -190,20 +193,29 @@ export function QuickActions({ verse, onClose, onNote, onShare, onChangeBackgrou
   const key = verse ? keyOf(verse) : '';
   const saved = useStore((s) => (key ? s.saved[key] !== undefined : false));
   const memorising = useStore((s) => (key ? s.memory[key] !== undefined : false));
+  const spanKey = passage ? keyOf(passage) : '';
+  const spanSaved = useStore((s) => (spanKey ? s.saved[spanKey] !== undefined : false));
   const speaking = useSpeaking();
   if (!verse) return <Sheet open={false} onClose={onClose}>{null}</Sheet>;
   const act = (fn: () => void, close = true) => () => { fn(); if (close) onClose(); };
+  const what = isPassage(verse) ? 'passage' : 'verse';
   return (
     <Sheet open onClose={onClose} title={formatRef(verse)}>
       <div className="actions">
+        {passage && (
+          <button className="action-passage" onClick={act(() => { const now = toggleSaved(spanKey); buzz(HAPTIC.save); toast(now ? `${formatRef(passage)} saved` : 'Removed from saved'); })}>
+            {spanSaved ? <IconCheck /> : <IconBookmark />}
+            <span>{spanSaved ? `${formatRef(passage)} saved (tap to remove)` : `Save ${formatRef(passage)} as a passage`}</span>
+          </button>
+        )}
         <button onClick={act(() => { const now = toggleSaved(key); toast(now ? 'Saved' : 'Removed from saved'); })}>
-          {saved ? <IconCheck /> : <IconBookmark />}<span>{saved ? 'Saved (tap to remove)' : 'Save verse'}</span>
+          {saved ? <IconCheck /> : <IconBookmark />}<span>{saved ? 'Saved (tap to remove)' : `Save ${what}`}</span>
         </button>
         <button onClick={act(() => { const now = toggleMemorise(key); buzz(HAPTIC.save); toast(now ? 'Added to Memorise' : 'Removed from Memorise'); })}>
-          {memorising ? <IconCheck /> : <IconMemory />}<span>{memorising ? 'Memorising (tap to remove)' : 'Memorise this verse'}</span>
+          {memorising ? <IconCheck /> : <IconMemory />}<span>{memorising ? 'Memorising (tap to remove)' : `Memorise this ${what}`}</span>
         </button>
-        <button onClick={act(async () => { toast((await copyText(shareText(verse, false))) ? 'Verse copied' : 'Could not copy'); })}>
-          <IconCopy /><span>Copy verse</span>
+        <button onClick={act(async () => { toast((await copyText(shareText(verse, false))) ? (isPassage(verse) ? 'Passage copied' : 'Verse copied') : 'Could not copy'); })}>
+          <IconCopy /><span>Copy {what}</span>
         </button>
         <button onClick={act(onShare)}><IconShare /><span>Share as text or picture</span></button>
         <a href={whatsappUrl(verse)} target="_blank" rel="noopener noreferrer" onClick={() => { markJourney('share'); onClose(); }}>
@@ -221,7 +233,7 @@ export function QuickActions({ verse, onClose, onNote, onShare, onChangeBackgrou
         {asCard ? (
           <button onClick={act(() => navigate(versePath(verse)))}><IconVerses /><span>Show as a card</span></button>
         ) : (
-          <button onClick={act(() => navigate(chapterPath(verse.b, verse.c, verse.v)))}><IconBook /><span>Read the full chapter</span></button>
+          <button onClick={act(() => navigate(readerPath(verse)))}><IconBook /><span>Read the full chapter</span></button>
         )}
       </div>
     </Sheet>

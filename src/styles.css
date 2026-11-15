@@ -517,7 +517,7 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--b
 .pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pill.still { pointer-events: none; }
 .feed-count { font-size: 0.78rem; font-weight: 600; color: rgba(255, 255, 255, 0.8); text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5); }
-.feed.clean .feed-top, .feed.clean .rail, .feed.clean .tabbar-overlay, .feed.clean .card-topic, .feed.clean .card-return, .feed.clean .refstep, .feed.clean .card-ref svg, .feed.clean .ribbon-pos { opacity: 0 !important; pointer-events: none; }
+.feed.clean .feed-top, .feed.clean .rail, .feed.clean .tabbar-overlay, .feed.clean .card-topic, .feed.clean .card-return, .feed.clean .refstep, .feed.clean .card-ref svg, .feed.clean .ribbon-pos, .feed.clean .card-more { opacity: 0 !important; pointer-events: none; }
 .feed.clean .ribbon { background: none; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
 .feed.clean .card-ref { border-color: transparent; }
 .feed.clean .feed-top > * { pointer-events: none; }
@@ -1120,6 +1120,26 @@ html[data-nav='pop']::view-transition-new(root) { animation: 0.3s ease both vt-f
 .refit { display: flex; flex-direction: column; gap: 8px; margin: 2px 0 12px; padding: 14px 16px; border-radius: 20px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); font-size: 0.9rem; color: var(--ink-2); }
 .refit strong { font-size: 1rem; color: var(--ink); }
 .refit ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 2px; }
+
+/* ---------- passages: consecutive verses saved as one ---------- */
+/* a small number before each verse of a passage, as in a printed Bible */
+.pv { font-family: var(--sans); font-size: 0.48em; font-weight: 600; letter-spacing: 0; vertical-align: 0.62em; line-height: 0; margin-right: 0.2em; opacity: 0.66; }
+/* the reader's bar names the selection and, for one verse, how to make it a passage */
+.verse-bar-title > span { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.verse-bar-title small { font-size: 0.72rem; letter-spacing: 0; text-transform: none; color: var(--ink-3); }
+/* a long passage in the Saved list shows its opening lines */
+.saved-text.passage { display: -webkit-box; -webkit-line-clamp: 7; -webkit-box-orient: vertical; overflow: hidden; }
+/* a passage too long for a card: it starts at the top, fades out, and offers the whole of it */
+.panel-main.cut { justify-content: flex-start; -webkit-mask-image: linear-gradient(to bottom, #000 80%, transparent); mask-image: linear-gradient(to bottom, #000 80%, transparent); }
+.card-more {
+  flex: none; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 34px; margin: 2px 0 0 26px; padding: 0 13px;
+  border-radius: 999px; font-size: 0.78rem; font-weight: 600; color: inherit; background: rgba(255, 255, 255, 0.2); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.26);
+}
+.card.ink-dark .card-more { background: rgba(60, 30, 10, 0.12); box-shadow: inset 0 0 0 1px rgba(60, 30, 10, 0.18); }
+/* the stretch of the chapter a passage covers, on the bar under it */
+.ribbon-pos b { position: absolute; top: 0; height: 9px; margin-left: -4.5px; padding-right: 9px; box-sizing: content-box; border-radius: 5px; background: currentColor; box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.22); }
+.card.ink-dark .ribbon-pos b { box-shadow: 0 0 0 3px rgba(60, 30, 10, 0.14); }
+.actions .action-passage span { font-weight: 600; }
 
 /* the narrowest phones: two topics still sit side by side */
 @media (max-width: 350px) {

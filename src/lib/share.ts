@@ -1,4 +1,5 @@
-import { formatRef, versePath, type Ref } from './books';
+import { formatRef, isPassage, versePath, type Ref } from './books';
+import { partsOf, supNumber } from './passage';
 import { sceneUrl, type Scene } from './scenes';
 
 export const APP_NAME = 'Chestnut';
@@ -6,14 +7,17 @@ export const TAGLINE = "A verse for what's on your mind";
 
 export interface Shareable extends Ref { text: string }
 
-/** Link that opens the app on this verse. */
+/** Link that opens the app on this verse or passage. */
 export function verseUrl(r: Ref): string {
   const base = `${location.origin}${location.pathname}`;
   return `${base}#${versePath(r)}`;
 }
 
 export function shareText(s: Shareable, withLink = true): string {
-  const body = `“${s.text}”\n— ${formatRef(s)} (KJV)`;
+  // a passage keeps its verse numbers, in small figures: "\u00b9There is… \u00b2For the law…"
+  const parts = isPassage(s) ? partsOf(s) : undefined;
+  const words = parts ? parts.map((p) => supNumber(p.v) + p.text).join(' ') : s.text;
+  const body = `“${words}”\n— ${formatRef(s)} (KJV)`;
   return withLink ? `${body}\n\n${verseUrl(s)}` : body;
 }
 
@@ -135,17 +139,28 @@ export async function renderShareImage(s: Shareable, scene: Scene, format: Image
   const maxW = W - 2 * 112;
   const boxH = format === 'story' ? H * 0.5 : H * 0.56;
   let size = format === 'story' ? 92 : 78;
+  // a long passage may go smaller than a single verse ever needs to
+  const smallest = 24;
   let lines: string[] = [];
   let lh = 0;
-  for (; size >= 30; size -= 2) {
+  for (; ; size -= 2) {
     ctx.font = `600 ${size}px ${SERIF}`;
     lines = wrap(ctx, s.text, maxW);
     lh = size * 1.22;
-    if (lines.length * lh <= boxH) break;
+    if (lines.length * lh <= boxH || size <= smallest) break;
+  }
+  // still too long at the smallest size: show the beginning and end it with "…" (the reference gives the whole range)
+  const room = Math.max(1, Math.floor(boxH / lh));
+  const cut = lines.length > room;
+  if (cut) {
+    lines = lines.slice(0, room);
+    let last = lines[room - 1];
+    while (last.includes(' ') && ctx.measureText(last + ' \u2026').width > maxW) last = last.slice(0, last.lastIndexOf(' '));
+    lines[room - 1] = last.replace(/[,;:.]$/, '') + ' \u2026';
   }
   // even out the lines so the last one is not a single stray word
   const count = lines.length;
-  for (let w = maxW * 0.96; count > 1 && w > maxW * 0.55; w -= maxW * 0.03) {
+  for (let w = maxW * 0.96; !cut && count > 1 && w > maxW * 0.55; w -= maxW * 0.03) {
     const tighter = wrap(ctx, s.text, w);
     if (tighter.length !== count) break;
     lines = tighter;
